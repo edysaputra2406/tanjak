@@ -1,0 +1,3417 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tanjak PLN</title>
+
+    <!-- External Libraries -->
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+      /* ==========================================================================
+        1. VARIABLES & GLOBAL RESET
+        ========================================================================== */
+      :root {
+        --pln-blue: #003366;
+        --pln-cyan: #00A2E9;
+        --pln-bg: #f4f6f8;
+        --sidebar-width: 260px;
+      }
+
+      * { 
+        box-sizing: border-box; 
+      }
+
+      body { 
+        font-family: 'Segoe UI', Arial, sans-serif; 
+        margin: 0; 
+        padding: 0;
+        background-color: var(--pln-bg); 
+        color: #333;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      /* ==========================================================================
+        2. APP LAYOUT & MAIN CONTENT
+        ========================================================================== */
+      .app-layout {
+        display: flex;
+        width: 100%;
+        min-height: 100vh;
+      }
+
+      .main-content {
+        flex: 1;
+        margin-left: var(--sidebar-width);
+        padding: 30px;
+        max-width: calc(100% - var(--sidebar-width));
+        transition: margin-left 0.3s ease;
+      }
+
+      /* ==========================================================================
+        3. SIDEBAR STYLING
+        ========================================================================== */
+      .sidebar {
+        width: var(--sidebar-width);
+        background: linear-gradient(180deg, #002244 0%, #003366 100%);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 100;
+        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar-header {
+        padding: 25px 20px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .sidebar-header .logo-icon {
+        font-size: 36px;
+        margin-bottom: 8px;
+      }
+
+      .sidebar-header h2 {
+        font-size: 16px;
+        margin: 0;
+        color: #fff;
+        letter-spacing: 0.5px;
+      }
+
+      .logo-box {
+        background: transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo-box img {
+        width: 140px;
+        height: auto;
+        object-fit: contain;
+        filter: 
+          drop-shadow(1px 0 0 #ffffff)
+          drop-shadow(-1px 0 0 #ffffff)
+          drop-shadow(0 1px 0 #ffffff)
+          drop-shadow(0 -1px 0 #ffffff)
+          drop-shadow(0 0 10px rgba(56, 189, 248, 0.8));
+      }
+
+      .sidebar-menu {
+        list-style: none;
+        padding: 20px 0;
+        margin: 0;
+        flex: 1;
+      }
+
+      .sidebar-menu li {
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: background 0.2s;
+        color: #cbd5e1;
+        border-left: 4px solid transparent;
+      }
+
+      .sidebar-menu li:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+      }
+
+      .sidebar-menu li.active {
+        background: rgba(0, 162, 233, 0.15);
+        color: #fff;
+        border-left-color: var(--pln-cyan);
+        font-weight: 600;
+      }
+
+      .sidebar-footer {
+        padding: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .btn-sidebar-logout {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.2s;
+      }
+
+      .btn-sidebar-logout:hover {
+        background: rgba(239, 68, 68, 0.4);
+        color: #fff;
+      }
+
+      /* ==========================================================================
+        4. MOBILE NAVIGATION BAR
+        ========================================================================== */
+      .mobile-navbar {
+        display: none;
+        background: #003366;
+        color: white;
+        padding: 15px 20px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .mobile-navbar h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .mobile-nav-tabs {
+        display: none;
+        background: #fff;
+        position: fixed;
+        top: 55px;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 8px 10px;
+        gap: 8px;
+      }
+
+      .mobile-tab-btn {
+        background: #e2e8f0;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #475569;
+        cursor: pointer;
+      }
+
+      .mobile-tab-btn.active {
+        background: var(--pln-cyan);
+        color: white;
+      }
+
+      /* ==========================================================================
+        5. CARDS, TABLES, & UI COMPONENTS
+        ========================================================================== */
+      .card-box {
+        background: #fff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 25px;
+      }
+
+      .card-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: var(--pln-blue);
+        margin-top: 0;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 2px solid #f1f5f9;
+        padding-bottom: 12px;
+      }
+
+      .section-title { 
+        font-size: 15px; 
+        font-weight: bold; 
+        color: var(--pln-blue); 
+        margin-top: 25px; 
+        margin-bottom: 12px; 
+        border-bottom: 2px solid var(--pln-blue); 
+        padding-bottom: 6px; 
+      }
+
+      .info-box { 
+        background: #e0f2fe; 
+        border-left: 4px solid #0284c7; 
+        padding: 12px 15px; 
+        border-radius: 4px; 
+        margin-bottom: 15px; 
+        font-size: 13px; 
+        color: #0369a1; 
+      }
+
+      table.data-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 10px; 
+        font-size: 13px; 
+      }
+
+      table.data-table th, 
+      table.data-table td { 
+        border: 1px solid #e2e8f0; 
+        padding: 10px 12px; 
+        text-align: left; 
+      }
+
+      table.data-table th { 
+        background-color: #003366; 
+        color: white; 
+        font-weight: 600; 
+        text-align: center; 
+      }
+
+      table.data-table td { 
+        text-align: center; 
+      }
+
+      table.data-table tr:nth-child(even) { 
+        background-color: #f8fafc; 
+      }
+
+      /* ==========================================================================
+        6. FORMS & BUTTONS
+        ========================================================================== */
+      .form-group { 
+        margin-bottom: 16px; 
+      }
+
+      label { 
+        font-size: 13px; 
+        font-weight: bold; 
+        color: #334155; 
+        display: block; 
+        margin-bottom: 6px; 
+      }
+
+      labelreview { 
+        font-size: 10px; 
+        font-weight: bold; 
+        color: #ef4444; 
+        display: block; 
+        margin-bottom: 6px; 
+      }
+
+      input[type="text"],
+      input[type="username"],
+      input[type="password"],
+      input[type="file"] {
+        width: 100%;
+        height: 36px;
+        padding: 6px 12px;
+        box-sizing: border-box;
+        font-size: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background-color: #f8fafc;
+      }
+
+      input[type="file"] {
+        display: flex;
+        align-items: center;
+      }
+
+      input:focus, 
+      select:focus { 
+        border-color: var(--pln-cyan); 
+        background-color: #fff; 
+        outline: none; 
+        box-shadow: 0 0 0 3px rgba(0, 162, 233, 0.15); 
+      }
+
+      input[readonly] { 
+        background-color: #e2e8f0; 
+        cursor: not-allowed; 
+      }
+
+      .row { 
+        display: flex; 
+        gap: 15px; 
+      }
+
+      .col { 
+        flex: 1; 
+      }
+
+      .canvas-container { 
+        margin-bottom: 10px; 
+        border: 2px dashed #005596; 
+        border-radius: 8px; 
+        background: #f9f9f9; 
+        padding: 5px; 
+      }
+
+      canvas { 
+        width: 100%; 
+        height: 150px; 
+        touch-action: none; 
+        background: #fff; 
+        border-radius: 4px; 
+      }
+
+      button { 
+        background-color: var(--pln-cyan); 
+        color: white; 
+        border: none; 
+        padding: 12px 20px; 
+        font-size: 15px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        font-weight: bold; 
+        transition: opacity 0.2s, transform 0.1s; 
+      }
+
+      button:hover { 
+        opacity: 0.92; 
+        transform: translateY(-1px); 
+      }
+
+      button:disabled { 
+        background-color: #cccccc !important; 
+        cursor: not-allowed; 
+        transform: none; 
+      }
+
+      .btn-secondary { 
+        background-color: #64748b; 
+      }
+
+      .btn-hapus { 
+        background-color: #ef4444; 
+        padding: 6px 10px; 
+        font-size: 12px; 
+        margin-top: 4px; 
+        width: auto; 
+        color: white; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+      }
+
+      .btnReviewDokumen { 
+        background-color: #ef4444; 
+        padding: 6px 14px; 
+        font-size: 12px; 
+        margin-top: 4px; 
+        width: auto; 
+        color: white; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+      }
+
+      .btn-pilih { 
+        background-color: #004b87; 
+        color: white; 
+        border: none; 
+        padding: 6px 12px; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        font-size: 12px; 
+        font-weight: 600; 
+        margin-left: auto;
+        display: block; 
+      }
+
+      .btn-pilih:hover { 
+        background-color: #0284c7; 
+      }
+
+      /* ==========================================================================
+        7. TABS & FORM PANELS
+        ========================================================================== */
+      .tab-container {
+        display: flex;
+        background: #f1f5f9;
+        padding: 5px;
+        border-radius: 12px;
+        gap: 8px;
+        margin: 20px 0;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      .tab-btn {
+        flex: 1;
+        background: transparent;
+        color: #64748b;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .tab-btn:hover {
+        color: #1e293b;
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      .tab-btn.active-pasang {
+        background: #ffffff;
+        color: #0d9488;
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.12);
+      }
+
+      .tab-btn.active-bongkar {
+        background: #ffffff;
+        color: #e11d48;
+        box-shadow: 0 4px 12px rgba(225, 29, 72, 0.12);
+      }
+
+      .form-panel-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        margin-bottom: 25px;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+
+      .panel-header-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 18px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f1f5f9;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ==========================================================================
+        8. LOGIN PAGE
+        ========================================================================== */
+      .login-container-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #001f3f 0%, #003366 50%, #00A2E9 100%);
+        padding: 20px;
+      }
+
+      .login-card {
+        background: white;
+        padding: 40px 35px;
+        border-radius: 12px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 420px;
+        text-align: center;
+      }
+
+      .login-logo-icon img {
+        width: 60px;
+        height: auto;
+        max-height: 60px;
+      }
+
+      .login-subtitle { 
+        font-size: 13px; 
+        color: #64748b; 
+        margin-bottom: 25px; 
+      }
+
+      /* ==========================================================================
+        9. MODALS & LOADING OVERLAYS
+        ========================================================================== */
+      .modal-overlay, 
+      .loading-overlay {
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5); 
+        display: flex; 
+        justify-content: center; 
+        align-items: center;
+        z-index: 9999; 
+        opacity: 0; 
+        visibility: hidden; 
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+
+      .modal-overlay.active, 
+      .loading-overlay.active { 
+        opacity: 1; 
+        visibility: visible; 
+      }
+
+      .modal-box, 
+      .loading-box {
+        background: #fff; 
+        padding: 25px 30px; 
+        border-radius: 10px; 
+        width: 90%; 
+        max-width: 350px;
+        text-align: center; 
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); 
+        transform: scale(0.9); 
+        transition: transform 0.3s ease;
+      }
+
+      .modal-overlay.active .modal-box, 
+      .loading-overlay.active .loading-box { 
+        transform: scale(1); 
+      }
+
+      .modal-title { 
+        font-size: 16px; 
+        font-weight: bold; 
+        color: #003366; 
+        margin-bottom: 8px; 
+      }
+
+      .modal-desc { 
+        font-size: 13px; 
+        color: #64748b; 
+        margin-bottom: 20px; 
+        line-height: 1.4; 
+      }
+
+      .modal-buttons { 
+        display: flex; 
+        gap: 10px; 
+      }
+
+      .modal-btn { 
+        flex: 1; 
+        padding: 10px; 
+        border-radius: 6px; 
+        font-size: 14px; 
+        font-weight: bold; 
+        cursor: pointer; 
+        border: none; 
+      }
+
+      .modal-btn-cancel { 
+        background-color: #e2e8f0; 
+        color: #334155; 
+      }
+
+      .modal-btn-confirm { 
+        background-color: #ef4444; 
+        color: white; 
+      }
+
+      .spinner {
+        width: 40px; 
+        height: 40px; 
+        border: 4px solid #e2e8f0; 
+        border-top: 4px solid var(--pln-cyan);
+        border-radius: 50%; 
+        animation: spin 0.8s linear infinite; 
+        margin: 0 auto 15px auto;
+      }
+
+      @keyframes spin { 
+        0% { transform: rotate(0deg); } 
+        100% { transform: rotate(360deg); } 
+      }
+
+      .loading-text { 
+        font-size: 14px; 
+        font-weight: bold; 
+        color: #003366; 
+      }
+
+      .hidden { 
+        display: none !important; 
+      }
+
+      /* ==========================================================================
+        10. RESPONSIVE MEDIA QUERIES (MOBILE BREAKPOINT)
+        ========================================================================== */
+      @media (max-width: 900px) {
+        .sidebar { 
+          display: none !important; 
+        }
+
+        .main-content { 
+          margin-left: 0 !important; 
+          max-width: 100% !important; 
+          padding: 80px 15px 20px 15px !important; 
+        }
+
+        .mobile-navbar { 
+          display: flex !important; 
+        }
+
+        .mobile-nav-tabs { 
+          display: flex !important; 
+        }
+        
+        .login-container-wrapper {
+          align-items: flex-start;
+          padding-top: 40px;
+        }
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <!-- ==========================================================================
+      HALAMAN LOGIN
+      ========================================================================== -->
+    <div id="viewLogin" class="login-container-wrapper">
+      <div class="login-card">
+        <img src="https://lh3.googleusercontent.com/d/12GVb6ZmKbrdpBQxGP-bulzY9Z2k-7dk6" alt="Logo Perusahaan" style="width: 200px; height: 200px; object-fit: contain;">
+
+        <div style="text-align: left;">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="loginUsername" placeholder="" autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="" autocomplete="current-password">
+          </div>
+
+          <button id="btnLogin" class="btn-login-pro" style="width: 100%; margin-top: 10px;" onclick="prosesLogin()">Masuk Aplikasi</button>
+          <p id="loginStatus" style="font-size: 13px; font-weight: bold; margin-top: 12px; text-align: center; min-height: 18px;"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+      APLIKASI UTAMA (SETELAH LOGIN)
+      ========================================================================== -->
+    <div id="appContainer" class="app-layout hidden">
+
+      <!-- Mobile Top Navigation (Khusus Smartphone) -->
+      <div class="mobile-navbar">
+        <h3 id="mobileTitleNav"></h3>
+        <button onclick="bukaModalLogout()" style="background: rgba(255,255,255,0.2); padding: 5px 10px; font-size: 12px; border-radius: 4px;">Keluar</button>
+      </div>
+
+      <div class="mobile-nav-tabs" id="mobileNavTabsContainer">
+        <!-- Diisi dinamis via JS berdasarkan role -->
+      </div>
+
+      <!-- Sidebar Desktop (Khusus PC / Laptop) -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo-box">
+            <img src="https://lh3.googleusercontent.com/d/12GVb6ZmKbrdpBQxGP-bulzY9Z2k-7dk6" alt="Logo Perusahaan" style="width: 170px; height: 170px; object-fit: contain;">
+          </div>
+        </div>
+
+        <ul class="sidebar-menu" id="sidebarMenuContainer">
+          <!-- Diisi dinamis via JS berdasarkan role -->
+        </ul>
+
+        <div class="sidebar-footer">
+          <div style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;" id="sidebarUserInfo">Login sebagai: -</div>
+          <button class="btn-sidebar-logout" onclick="bukaModalLogout()">Keluar Aplikasi</button>
+        </div>
+      </div>
+
+      <!-- Area Konten Utama -->
+      <div class="main-content">
+
+        <!-- PANEL ADMIN 0: DASHBOARD STATISTIK -->
+        <div id="panelAdminDashboard" class="card-box hidden">
+          <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <span>📊 Dashboard Utama Admin (<span id="dashUlpTitle">-</span>)</span>
+            <button onclick="muatDataDashboard()" style="font-size: 12px; padding: 6px 12px; background-color: var(--pln-blue);">🔄 Refresh Data</button>
+          </div>
+
+          <!-- Layout Utama: Kiri (3/4 Grafik) & Kanan (1/4 Jumlah Data) -->
+          <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 20px; align-items: start;">
+            
+            <!-- Kolom Kiri: Grafik Statistik (3/4 Bagian) -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
+              <div class="section-title" style="margin-top: 0;">Grafik Ringkasan Status Data</div>
+              <div style="position: relative; width: 100%; height: 320px; display: flex; justify-content: center; align-items: center;">
+                <canvas id="chartDashboard"></canvas>
+              </div>
+            </div>
+
+            <!-- Kolom Kanan: Ringkasan Jumlah Data (1/4 Bagian) -->
+            <div style="display: flex; flex-direction: column; gap: 25px;">
+              <div style="background: #e0f2fe; border-left: 5px solid #0284c7; padding: 12px; border-radius: 8px;">
+                <div style="font-size: 12px; color: #0369a1; font-weight: bold;">Total Data Masuk</div>
+                <div id="dashTotalData" style="font-size: 24px; font-weight: bold; color: #0c4a6e; margin-top: 4px;">0</div>
+              </div>
+
+              <div style="background: #f1f5f9; border-left: 5px solid #64748b; padding: 12px; border-radius: 8px;">
+                <div style="font-size: 12px; color: #475569; font-weight: bold;">Menunggu Eksekusi</div>
+                <div id="dashTotalMenunggu" style="font-size: 24px; font-weight: bold; color: #1e293b; margin-top: 4px;">0</div>
+              </div>
+
+              <div style="background: #fef9c3; border-left: 5px solid #eab308; padding: 12px; border-radius: 8px;">
+                <div style="font-size: 12px; color: #854d0e; font-weight: bold;">Selesai Petugas</div>
+                <div id="dashTotalPetugas" style="font-size: 24px; font-weight: bold; color: #713f12; margin-top: 4px;">0</div>
+              </div>
+
+              <div style="background: #dcfce7; border-left: 5px solid #22c55e; padding: 12px; border-radius: 8px;">
+                <div style="font-size: 12px; color: #15803d; font-weight: bold;">Approved Manager</div>
+                <div id="dashTotalManager" style="font-size: 24px; font-weight: bold; color: #14532d; margin-top: 4px;">0</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANEL ADMIN 1: ENTRI DATA INDIVIDU -->
+        <div id="panelAdminIndividu" class="card-box hidden">
+          <div class="card-title" style="margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+            📝 Entri Data Individu
+          </div>
+
+          <!-- JENIS TRANSAKSI (Posisi Paling Atas, Senada & Seimbang) -->
+          <div class="form-group" style="margin-bottom: 20px;">
+            <div class="section-title">Jenis Transaksi</div>
+            <select id="admJenisTransaksi" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; background-color: #fff; cursor: pointer;">
+              <option value="">-- Pilih Jenis Transaksi --</option>
+              <option value="PASANG BARU">PASANG BARU</option>
+              <option value="PERUBAHAN DAYA">PERUBAHAN DAYA</option>
+            </select>
+          </div>
+
+          <!-- Layout 2 Kolom -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+
+            <!-- Kolom Kiri: Form Isian Teks -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div class="section-title">Entri Data Pelanggan</div>
+
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">1. No Agenda:</label>
+                <input type="text" id="admNoAgenda" placeholder="" maxlength="18" oninput="this.value = this.value.replace(/[^0-9]/g, '');" style="width: 100%; box-sizing: border-box;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">2. ID Pelanggan:</label>
+                <input type="text" id="admIdPelanggan" placeholder="" maxlength="12" oninput="this.value = this.value.replace(/[^0-9]/g, '');" style="width: 100%; box-sizing: border-box;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">3. Nama Pelanggan:</label>
+                <input type="text" id="admNama" placeholder="" style="width: 100%; box-sizing: border-box;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">4. Alamat Pemasangan:</label>
+                <input type="text" id="admAlamat" placeholder="" style="width: 100%; box-sizing: border-box;">
+              </div>
+              <div class="row" style="display: none;">
+                <div class="col form-group" style="margin: 0;">
+                  <label style="font-weight: 600; font-size: 13px;">ULP:</label>
+                  <input type="text" id="admUlp" readonly style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="col form-group" style="margin: 0;">
+                  <label style="font-weight: 600; font-size: 13px;">UP3:</label>
+                  <input type="text" id="admUp3" readonly style="width: 100%; box-sizing: border-box;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Kolom Kanan: Upload Berkas PDF Wajib -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div class="section-title">Upload Berkas PDF</div>
+
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">1. File Permohonan (SIP):</label>
+                <input type="file" id="filePermohonan" accept=".pdf" style="width: 100%; font-size: 14px;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">2. File Perintah Kerja (PK):</label>
+                <input type="file" id="filePerintahKerja" accept=".pdf" style="width: 100%; font-size: 14px;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">3. File Berita Acara (BA):</label>
+                <input type="file" id="fileBeritaAcara" accept=".pdf" style="width: 100%; font-size: 14px;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-weight: 600; font-size: 14px;">4. File SPJBTL:</label>
+                <input type="file" id="fileSpjbtl" accept=".pdf" style="width: 100%; font-size: 14px;">
+              </div>
+            </div>
+
+          </div>
+
+          <button id="btnSimpanAdmin" onclick="prosesSimpanAdmin()" style="margin-top: 20px; width: 100%; padding: 12px; font-size: 15px; font-weight: bold; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            Simpan Data
+          </button>
+        </div>
+
+        <!-- PANEL ADMIN 2: UPLOAD DATA KOLEKTIF -->
+        <div id="panelAdminKolektif" class="card-box hidden">
+          <div class="card-title">📂 Upload Data Kolektif</div>
+
+          <div class="info-box">
+            Pastikan file Excel (.xlsx / .xls) memiliki kolom berurutan: <b>No Agenda | ID Pelanggan | Nama | Alamat | Jenis Transaksi</b>
+          </div>
+
+          <div id="wrapperInputKolektif">
+            <div class="form-group">
+              <div class="section-title">Upload File Excel Data Pelanggan (.xlsx/.xls)</div>
+              <input type="file" id="fileExcelKolektif" accept=".xlsx, .xls">
+            </div>
+
+            <div class="row" style="display: none;">
+              <div class="col form-group">
+                <label>ULP (Otomatis User):</label>
+                <input type="text" id="kolUlp" readonly>
+              </div>
+              <div class="col form-group">
+                <label>UP3 (Otomatis User):</label>
+                <input type="text" id="kolUp3" readonly>
+              </div>
+            </div>
+
+            <div class="section-title">Upload Berkas Kolektif</div>
+            <div class="row">
+              <div class="col form-group">
+                <label>1. PDF Kolektif Permohonan:</label>
+                <input type="file" id="fileKolektifPermohonan" accept=".pdf">
+              </div>
+              <div class="col form-group">
+                <label>2. PDF Kolektif Perintah Kerja:</label>
+                <input type="file" id="fileKolektifPk" accept=".pdf">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col form-group">
+                <label>3. PDF Kolektif Berita Acara:</label>
+                <input type="file" id="fileKolektifBa" accept=".pdf">
+              </div>
+              <div class="col form-group">
+                <label>4. PDF Kolektif SPJBTL:</label>
+                <input type="file" id="fileKolektifSpjbtl" accept=".pdf">
+              </div>
+            </div>
+
+            <button id="btnProsesReview" onclick="prosesAnalisisKolektif()" style="margin-top: 15px; width: 100%;">
+              Preview Upload
+            </button>
+          </div>
+
+          <!-- Container Tabel Review -->
+          <div id="wrapperReviewKolektif" class="hidden" style="margin-top: 15px;">
+            <div class="section-title" style="background-color: #059669; color: white; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-weight: bold;">Hasil Preview Data Kolektif</span>
+                <span id="cntDataTidakValid" style="background-color: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;">
+                  Data Tidak Valid: 0
+                </span>
+              </div>
+
+              <button type="button" id="btnExportDataInvalid" onclick="exportDataTidakValidKolektif()" style="display: none; background-color: #dc2626; color: white; border: 1px solid white; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+                Export Data Tidak Valid (.xlsx)
+              </button>
+            </div>
+
+            <!-- Tabel Review -->
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; margin-top: 10px; margin-bottom: 15px; border-radius: 4px;">
+              <table class="data-table" id="tabelReviewKolektif">
+                <thead>
+                  <tr>
+                    <th>No Agenda</th>
+                    <th>ID Pelanggan</th>
+                    <th>Nama</th>
+                    <th>Alamat</th>
+                    <th>SIP</th>
+                    <th>PK</th>
+                    <th>BA</th>
+                    <th>SPJBTL</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+              <button type="button" class="btn-secondary" style="flex: 1;" onclick="batalReviewKolektif()">← Batal & Ulangi</button>
+              <button type="button" id="btnApproveKolektif" onclick="approveSimpanKolektif()" style="background-color: #059669; color: white; flex: 2; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                Approve & Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL ADMIN 3: ARSIP DOKUMEN -->
+        <div id="panelAdminArsip" class="card-box hidden">
+          <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>🗂️</span> Arsip Dokumen Pelanggan
+          </div>
+
+          <div class="form-group" style="margin-top: 15px;">
+            <label style="display: block; font-weight: 600; color: #334155; margin-bottom: 6px; font-size: 13px;">Cari Berdasarkan No Agenda:</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <div style="position: relative; width: 350px;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;">🔍</span>
+                <input type="text" id="searchArsipAgenda" placeholder="" maxlength="18" oninput="this.value = this.value.replace(/[^0-9]/g, '');" style="width: 100%; padding: 8px 12px 8px 36px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none;box-sizing: border-box;">
+              </div>
+              <button type="button" onclick="cariArsipAgenda()" style="width: 140px; background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+                Cari Arsip
+              </button>
+            </div>
+          </div>
+
+          <p id="searchArsipStatus" style="font-size: 13px; font-weight: bold; margin: 8px 0;"></p>
+
+          <div id="hasilArsipContent" class="hidden" style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            <div class="info-box" id="infoArsipText" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 6px; padding: 14px; margin-bottom: 15px;"></div>
+            <div class="section-title" style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 10px;">📑 Daftar File PDF Bertanda Tangan Lengkap:</div>
+            <div id="listArsipFiles" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;"></div>
+          </div>
+        </div>
+
+        <!-- PANEL PETUGAS: EKSEKUSI LAPANGAN -->
+        <div id="panelPetugasEksekusi" class="card-box hidden">
+          <div class="card-title">Form Berita Acara & Tanda Tangan</div>
+
+          <div class="form-group">
+            <label>Cari Berdasarkan No Agenda:</label>
+            <div class="row">
+              <div class="col">
+                <input type="text" id="searchNoAgenda" placeholder="" maxlength="18" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '');" style="width: 100%; box-sizing: border-box;">
+              </div>
+              <button type="button" style="width: 130px;" onclick="cariAgenda()">Cari Data</button>
+            </div>
+          </div>
+          <p id="searchStatus" style="font-size: 13px; font-weight: bold; margin: 8px 0;"></p>
+
+          <div id="formPetugasContent" class="hidden">
+            <div class="info-box" id="infoPelangganText"></div>
+
+            <!-- ================= MENU TAB ELEGAN ================= -->
+            <div class="tab-container">
+              <button type="button" id="btnTabPasang" class="tab-btn active-pasang" onclick="switchTab('pasang')">
+                <span class="tab-indicator"></span>
+                Data Pemasangan
+              </button>
+              <button type="button" id="btnTabBongkar" class="tab-btn" onclick="switchTab('bongkar')">
+                <span class="tab-indicator"></span>
+                Data Pembongkaran
+              </button>
+            </div>
+
+
+            <!-- ================= PANEL 1: PEMASANGAN ================= -->
+            <div id="contentPanelPasang" class="form-panel-card panel-pasang-active">
+
+              <!-- 1. Alat Pembatas (Pasang) -->
+              <div class="section-title"style="color: #0d9488;">1. Alat Pembatas</div>
+              <div class="form-group">
+                <label>Tanggal:</label>
+                <input type="text" id="pasang_pembatasTgl" readonly>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Merk:</label><input type="text" id="pasang_pembatasMerk"></div>
+                <div class="col form-group"><label>Type:</label><input type="text" id="pasang_pembatasType"></div>
+                <div class="col form-group"><label>Nomor:</label><input type="text" id="pasang_pembatasNomor"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Tahun Tera:</label><input type="text" id="pasang_pembatasThnTera"></div>
+                <div class="col form-group"><label>Tahun Buat:</label><input type="text" id="pasang_pembatasThnBuat"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Ukuran Phasa:</label><input type="text" id="pasang_pembatasUkuran"></div>
+                <div class="col form-group"><label>Setting (A):</label><input type="text" id="pasang_pembatasSetting"></div>
+              </div>
+
+              <!-- 2. Meter kWh (Pasang) -->
+              <div class="section-title" style="color: #0d9488;">2. Meter kWh</div>
+              <div class="form-group">
+                <label>Tanggal:</label>
+                <input type="text" id="pasang_kwhTgl" readonly>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Merk:</label><input type="text" id="pasang_kwhMerk"></div>
+                <div class="col form-group"><label>Type:</label><input type="text" id="pasang_kwhType"></div>
+                <div class="col form-group"><label>Nomor:</label><input type="text" id="pasang_kwhNomor"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Tahun Tera:</label><input type="text" id="pasang_kwhThnTera"></div>
+                <div class="col form-group"><label>Tahun Buat:</label><input type="text" id="pasang_kwhThnBuat"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Kemampuan Meter:</label><input type="text" id="pasang_kwhKemampuan"></div>
+                <div class="col form-group"><label>Konstanta Meter:</label><input type="text" id="pasang_kwhKonstanta"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Stand LWBP:</label><input type="text" id="pasang_lwbp"></div>
+                <div class="col form-group"><label>Stand WBP:</label><input type="text" id="pasang_wbp"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>kWh Sisa:</label><input type="text" id="pasang_kwhSisa"></div>
+                <div class="col form-group"><label>Faktor Kali:</label><input type="text" id="pasang_faktorKali"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Trafo Arus:</label><input type="text" id="pasang_trafoArus"></div>
+                <div class="col form-group"><label>Trafo Tegangan:</label><input type="text" id="pasang_trafoTegangan"></div>
+              </div>
+            </div>
+
+
+            <!-- ================= PANEL 2: PEMBONGKARAN ================= -->
+            <div id="contentPanelBongkar" class="form-panel-card hidden">
+
+              <!-- 1. Alat Pembatas (Bongkar) -->
+              <div class="section-title" style="color: #e11d48;">1. Alat Pembatas</div>
+              <div class="form-group">
+                <label>Tanggal:</label>
+                <input type="text" id="bongkar_pembatasTgl" readonly>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Merk:</label><input type="text" id="bongkar_pembatasMerk"></div>
+                <div class="col form-group"><label>Type:</label><input type="text" id="bongkar_pembatasType"></div>
+                <div class="col form-group"><label>Nomor:</label><input type="text" id="bongkar_pembatasNomor"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Tahun Tera:</label><input type="text" id="bongkar_pembatasThnTera"></div>
+                <div class="col form-group"><label>Tahun Buat:</label><input type="text" id="bongkar_pembatasThnBuat"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Ukuran Phasa:</label><input type="text" id="bongkar_pembatasUkuran"></div>
+                <div class="col form-group"><label>Setting (A):</label><input type="text" id="bongkar_pembatasSetting"></div>
+              </div>
+
+              <!-- 2. Meter kWh (Bongkar) -->
+              <div class="section-title"style="color: #e11d48;">2. Meter kWh</div>
+              <div class="form-group">
+                <label>Tanggal:</label>
+                <input type="text" id="bongkar_kwhTgl" readonly>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Merk:</label><input type="text" id="bongkar_kwhMerk"></div>
+                <div class="col form-group"><label>Type:</label><input type="text" id="bongkar_kwhType"></div>
+                <div class="col form-group"><label>Nomor:</label><input type="text" id="bongkar_kwhNomor"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Tahun Tera:</label><input type="text" id="bongkar_kwhThnTera"></div>
+                <div class="col form-group"><label>Tahun Buat:</label><input type="text" id="bongkar_kwhThnBuat"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Kemampuan Meter:</label><input type="text" id="bongkar_kwhKemampuan"></div>
+                <div class="col form-group"><label>Konstanta Meter:</label><input type="text" id="bongkar_kwhKonstanta"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Stand LWBP:</label><input type="text" id="bongkar_lwbp"></div>
+                <div class="col form-group"><label>Stand WBP:</label><input type="text" id="bongkar_wbp"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>kWh Sisa:</label><input type="text" id="bongkar_kwhSisa"></div>
+                <div class="col form-group"><label>Faktor Kali:</label><input type="text" id="bongkar_faktorKali"></div>
+              </div>
+              <div class="row">
+                <div class="col form-group"><label>Trafo Arus:</label><input type="text" id="bongkar_trafoArus"></div>
+                <div class="col form-group"><label>Trafo Tegangan:</label><input type="text" id="bongkar_trafoTegangan"></div>
+              </div>
+            </div>
+
+            <hr style="margin: 25px 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+            <div class="form-group" style="margin-top: 15px;">
+              <label>1. Tanda Tangan Pelanggan:</label>
+              <labelreview>(Review dokumen terlebih dahulu):</label>
+              <!-- Tambahkan id "wrapperCanvasPelanggan" dan style awal agar disable (pudar & tidak bisa diklik) -->
+              <div class="canvas-container" id="wrapperCanvasPelanggan" style="pointer-events: none; opacity: 0.5; background-color: #f1f5f9; transition: 0.3s;">
+                <canvas id="canvasPelanggan"></canvas>
+              </div>
+              <!-- Pembungkus tombol agar Hapus di kiri dan Review di ujung kanan -->
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 8px;">
+                <button type="button" class="btn-hapus" style="margin: 0;" onclick="padPelanggan && padPelanggan.clear()">Hapus TTD Pelanggan</button>
+                <button type="button" class="btnReviewDokumen" onclick="bukaReviewPDF()" style="margin: 0; margin-left: auto;">Review Dokumen</button>
+              </div>
+            </div>
+
+            <!-- ================= MODAL PRATINJAU PDF DALAM APLIKASI ================= -->
+            <div id="modalReviewPDF" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+              <div style="background: #ffffff; padding: 20px; border-radius: 12px; width: 100%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                
+                <!-- Header Modal (Tanpa Tombol Tutup atas) -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                  <h3 style="margin: 0; color: #1e293b; font-size: 16px;">Pratinjau Dokumen (Berita Acara & SPJBTL)</h3>
+                </div>
+                
+                <!-- Konten Area PDF (Bertumpuk: Atas Berita Acara, Bawah SPJBTL) -->
+                <div style="display: flex; flex-direction: column; gap: 15px; flex: 1; overflow: hidden;">
+                  
+                  <!-- Viewer Berita Acara (Atas) -->
+                  <div style="flex: 1; display: flex; flex-direction: column; min-height: 200px;">
+                    <span style="font-weight: bold; font-size: 13px; color: #0d9488; margin-bottom: 5px;">Berita Acara</span>
+                    <iframe id="iframeBeritaAcara" style="width: 100%; flex: 1; border: 1px solid #cbd5e1; border-radius: 6px;" src=""></iframe>
+                  </div>
+                  
+                  <!-- Viewer SPJBTL (Bawah) -->
+                  <div style="flex: 1; display: flex; flex-direction: column; min-height: 200px;">
+                    <span style="font-weight: bold; font-size: 13px; color: #e11d48; margin-bottom: 5px;">SPJBTL</span>
+                    <iframe id="iframeSpjbtl" style="width: 100%; flex: 1; border: 1px solid #cbd5e1; border-radius: 6px;" src=""></iframe>
+                  </div>
+
+                </div>
+
+                <!-- Footer Modal: Ceklis di Samping Tombol Kembali -->
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                  
+                  <!-- Kotak Ceklis di Dalam Modal -->
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                    <input type="checkbox" id="checkKonfirmasiReview" onchange="togglePersetujuan()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="checkKonfirmasiReview" style="margin: 0; font-weight: normal; cursor: pointer; font-size: 13px; color: #334155;">
+                      Saya telah membaca dan menyetujuinya.
+                    </label>
+                  </div>
+
+                  <!-- Tombol Kembali / Tutup -->
+                  <button type="button" onclick="tutupModalPDF()" style="background: #64748b; width: 140px; padding: 8px; border-radius: 6px; color: #ffffff; border: none; cursor: pointer;">Kembali</button>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+              <label>2. Tanda Tangan Petugas:</label>
+              <div class="canvas-container"><canvas id="canvasPetugas"></canvas></div>
+              <button type="button" class="btn-hapus" onclick="padPetugas && padPetugas.clear()">Hapus TTD Petugas</button>
+            </div>
+
+            <button id="btnSubmitPetugas" onclick="prosesMultiPDF()" style="margin-top: 25px; width: 100%;">Simpan Data</button>
+          </div>
+        </div>
+
+
+
+        <!-- ================= MODAL PRATINJAU (REVIEW) DOKUMEN ================= -->
+        <div id="modalReviewDokumen" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box;">
+          <div style="background: #ffffff; padding: 25px; border-radius: 12px; width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            
+            <!-- Header Modal -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 15px;">
+              <h3 style="margin: 0; color: #1e293b; font-size: 18px;">Pratinjau Berita Acara</h3>
+              <button type="button" onclick="tutupModalReview()" style="background: #e11d48; width: auto; padding: 6px 12px; font-size: 12px; border-radius: 6px;">Tutup</button>
+            </div>
+            
+            <!-- Konten / Ringkasan Data yang Direview -->
+            <div id="contentPreviewBody" style="font-size: 14px; color: #334155; line-height: 1.5;">
+              <p style="text-align: center; color: #64748b;">Memuat data pratinjau...</p>
+            </div>
+
+            <!-- Tombol Aksi di dalam Modal -->
+            <div style="display: flex; gap: 12px; margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+              <button type="button" onclick="tutupModalReview()" style="background: #64748b; flex: 1; padding: 10px;">Kembali Edit</button>
+              <button type="button" onclick="prosesSimpanSetelahReview()" style="background: #059669; flex: 1; padding: 10px;">Setuju & Simpan Data</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANEL MANAGER: APPROVAL & TTD -->
+        <div id="panelManagerApproval" class="card-box hidden">
+          <div class="card-title">Tanda Tangan Manager</div>
+
+          <div id="managerTableContainer">
+            <p style="font-size: 13px; color: #64748b;">Daftar No Agenda berstatus 'Selesai' oleh petugas dan siap ditandatangani Manager:</p>
+            <div id="listAgendaTable" style="margin-top: 10px;">Memuat data...</div>
+          </div>
+
+          <!-- Form Tanda Tangan Manager -->
+          <div id="formManagerContent" class="hidden" style="margin-top: 15px; border-top: 1px dashed #cbd5e1; padding-top: 15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+              <h4 style="color: #059669; margin: 0;">Validasi Data Pelanggan</h4>
+              <button type="button" class="btn-secondary" style="width:auto; padding:5px 12px; font-size:12px;" onclick="tutupFormManager()">← Batal / Kembali</button>
+            </div>
+
+            <div class="info-box" id="infoManagerText"></div>
+
+            <div class="form-group">
+              <label>Tanda Tangan Manager:</label>
+              <div class="canvas-container"><canvas id="canvasManager"></canvas></div>
+              <button type="button" class="btn-hapus" onclick="padManager && padManager.clear()">Hapus TTD Manager</button>
+            </div>
+
+            <button id="btnSubmitManager" onclick="prosesManagerTTD()" style="margin-top: 20px; width: 100%; background-color: #059669;">Simpan Data</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+      MODALS & DIALOG OVERLAYS
+      ========================================================================== -->
+
+    <!-- Modal Logout -->
+    <div id="logoutModal" class="modal-overlay">
+      <div class="modal-box">
+        <div class="modal-title">Konfirmasi Keluar</div>
+        <div class="modal-desc">Apakah Anda yakin ingin keluar dari aplikasi?</div>
+        <div class="modal-buttons">
+          <button type="button" class="modal-btn modal-btn-cancel" onclick="tutupModalLogout()">Batal</button>
+          <button type="button" class="modal-btn modal-btn-confirm" onclick="konfirmasiLogout()">Ya, Keluar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popup Loading -->
+    <div id="loadingModal" class="loading-overlay">
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <div id="loadingText" class="loading-text">Memproses...</div>
+      </div>
+    </div>
+
+    <!-- Popup Notifikasi -->
+    <div id="popupNotifModal" class="modal-overlay">
+      <div class="modal-box">
+        <div id="popupNotifTitle" class="modal-title">Notifikasi</div>
+        <div id="popupNotifDesc" class="modal-desc">Pesan informasi...</div>
+        <button type="button" class="modal-btn modal-btn-confirm" style="background-color: var(--pln-cyan); margin-top: 5px;" onclick="tutupPopupNotif()">Mengerti</button>
+      </div>
+    </div>
+    
+
+    <script>
+
+      // Konfigurasi URL Web App Google Apps Script Anda setelah di-deploy
+      const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5FEBGGP_L4aX8iKT5HqgSO4u2FqFcJuvTkcu-yVfAxIOa84GDEOLcWPC8jkZONK36/exec";
+
+      // Membuat Mocking google.script.run agar kompatibel dengan Netlify tanpa ubah kode
+      window.google = window.google || {};
+      window.google.script = window.google.script || {};
+
+      window.google.script.run = (function() {
+        function createProxy() {
+          let successHandler = null;
+          let failureHandler = null;
+
+          const proxy = new Proxy({}, {
+            get: function(target, prop) {
+              if (prop === 'withSuccessHandler') {
+                return function(callback) {
+                  successHandler = callback;
+                  return proxy;
+                };
+              }
+              if (prop === 'withFailureHandler') {
+                return function(callback) {
+                  failureHandler = callback;
+                  return proxy;
+                };
+              }
+
+              // Ini adalah fungsi backend yang dipanggil (misal: simpanDataAdmin)
+              return function(...args) {
+                const action = prop;
+                const payload = args.length === 1 ? args[0] : args;
+
+                fetch(GAS_WEB_APP_URL, {
+                  method: 'POST',
+                  body: JSON.stringify({ action: action, payload: payload })
+                })
+                .then(res => res.json())
+                .then(response => {
+                  if (response.success) {
+                    if (successHandler) successHandler(response.result);
+                  } else {
+                    if (failureHandler) {
+                      failureHandler(new Error(response.message));
+                    } else {
+                      alert("Error: " + response.message);
+                    }
+                  }
+                })
+                .catch(err => {
+                  if (failureHandler) {
+                    failureHandler(err);
+                  } else {
+                    alert("Koneksi gagal: " + err.message);
+                  }
+                });
+              };
+            }
+          });
+          return proxy;
+        }
+
+        return {
+          withSuccessHandler: function(cb) { return createProxy().withSuccessHandler(cb); },
+          withFailureHandler: function(cb) { return createProxy().withFailureHandler(cb); }
+        };
+      })();
+
+
+      // ==========================================================================
+      // STATE & VARIABEL GLOBAL
+      // ==========================================================================
+
+      // Sesi Pengguna
+      var CURRENT_USER_ROLE = "";
+      var CURRENT_USER_NAMA = "";
+      var CURRENT_USER_ULP  = "";
+      var CURRENT_USER_UP3  = "";
+
+      // Transaksi Petugas Lapangan
+      var CURRENT_NO_AGENDA      = "";
+      var CURRENT_FILE_BA_ID     = "";
+      var CURRENT_FILE_SPJBTL_ID = "";
+
+      // Transaksi Approval Manager
+      var MGR_NO_AGENDA     = "";
+      var MGR_PERMOHONAN_ID = "";
+      var MGR_PK_ID         = "";
+      var MGR_BA_ID         = "";
+      var MGR_SPJBTL_ID     = "";
+
+      // Canvas Tanda Tangan Digital
+      var padPelanggan = null;
+      var padPetugas   = null;
+      var padManager   = null;
+
+      // Tanggal Otomatis Hari Ini (Format: DD/MM/YYYY)
+      const today = new Date();
+      const tglFormat = String(today.getDate()).padStart(2, '0') + '/' + 
+                        String(today.getMonth() + 1).padStart(2, '0') + '/' + 
+                        today.getFullYear();
+
+
+      // ==========================================================================
+      // FUNGSI UTILITAS (CONVERTER)
+      // ==========================================================================
+
+      /**
+       * Mengonversi array biner (Uint8Array) menjadi string Base64.
+       * @param {Uint8Array} uint8Array - Data biner yang akan dikonversi.
+       * @returns {string} String berformat Base64.
+       */
+      function uint8ArrayToBase64(uint8Array) {
+        let binary = '';
+        const len = uint8Array.byteLength;
+        
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(uint8Array[i]);
+        }
+        
+        return btoa(binary);
+      }
+
+
+      // ==========================================================================
+      // KONTROLER POPUP NOTIFIKASI
+      // ==========================================================================
+
+      /**
+       * Menampilkan dialog popup notifikasi ke layar.
+       * @param {string} judul - Judul pesan notifikasi.
+       * @param {string} pesan - Isi pesan notifikasi (mendukung tag HTML).
+       * @param {boolean} [isSukses=true] - Status notifikasi (true = hijau, false = merah).
+       */
+      function tampilkanPopupNotif(judul, pesan, isSukses = true) {
+        const titleEl = document.getElementById('popupNotifTitle');
+        const descEl  = document.getElementById('popupNotifDesc');
+        const modalEl = document.getElementById('popupNotifModal');
+
+        if (titleEl && descEl && modalEl) {
+          titleEl.innerText = judul;
+          titleEl.style.color = isSukses ? '#059669' : '#dc2626';
+          descEl.innerHTML = pesan;
+          modalEl.classList.add('active');
+        }
+      }
+
+      /**
+       * Menutup dialog popup notifikasi yang sedang aktif.
+       */
+      function tutupPopupNotif() {
+        const modalEl = document.getElementById('popupNotifModal');
+        if (modalEl) {
+          modalEl.classList.remove('active');
+        }
+      }
+
+      // ==========================================================================
+      // KONTROLER NAVIGASI & ALOKASI MENU BERDASARKAN ROLE
+      // ==========================================================================
+
+      /**
+       * Menginisialisasi modul navigasi, menu sidebar, dan tampilan aplikasi berdasarkan role pengguna.
+       * @param {string} role - Peran pengguna ('admin', 'petugas', atau 'manager').
+       * @param {string} nama - Nama lengkap pengguna.
+       * @param {string} [ulp=""] - Unit Layanan Pelanggan pengguna.
+       * @param {string} [up3=""] - Unit Pelaksana Pelayanan Pelanggan pengguna.
+       */
+      function inisialisasiNavigasi(role, nama, ulp = "", up3 = "") {
+        // 1. Simpan Status Sesi Pengguna
+        CURRENT_USER_ROLE = role;
+        CURRENT_USER_NAMA = nama;
+        CURRENT_USER_ULP  = ulp;
+        CURRENT_USER_UP3  = up3;
+
+        // 2. Alihkan Tampilan dari Form Login ke Dashboard Utama
+        document.getElementById('viewLogin').classList.add('hidden');
+        document.getElementById('appContainer').classList.remove('hidden');
+
+        let sidebarMenuHtml = "";
+        let mobileTabsHtml  = "";
+
+        // 3. Percabangan Layout & Menu Berdasarkan Peran Pengguna
+        if (role === 'admin') {
+          // --- PERAN: ADMIN ---
+          document.getElementById('sidebarUserInfo').innerText = `${nama} ${ulp}`;
+          document.getElementById('mobileTitleNav').innerText  = `${nama} ${ulp}`;
+
+          sidebarMenuHtml = `
+            <li id="menu_admin_dashboard" onclick="pilihMenuAdmin('dashboard')">📊 Dashboard</li>
+            <li id="menu_admin_individu" onclick="pilihMenuAdmin('individu')">📝 Entri Individu</li>
+            <li id="menu_admin_kolektif" onclick="pilihMenuAdmin('kolektif')">📂 Upload Kolektif</li>
+            <li id="menu_admin_arsip" onclick="pilihMenuAdmin('arsip')">🗂️ Arsip Dokumen</li>
+          `;
+
+          mobileTabsHtml = `
+            <button class="mobile-tab-btn active" id="mtab_admin_dashboard" onclick="pilihMenuAdmin('dashboard')">Dashboard</button>
+            <button class="mobile-tab-btn active" id="mtab_admin_individu" onclick="pilihMenuAdmin('individu')">Entri Individu</button>
+            <button class="mobile-tab-btn" id="mtab_admin_kolektif" onclick="pilihMenuAdmin('kolektif')">Upload Kolektif</button>
+            <button class="mobile-tab-btn" id="mtab_admin_arsip" onclick="pilihMenuAdmin('arsip')">Arsip Dokumen</button>
+          `;
+
+          document.getElementById('sidebarMenuContainer').innerHTML   = sidebarMenuHtml;
+          document.getElementById('mobileNavTabsContainer').innerHTML = mobileTabsHtml;
+
+          // Prefill Wilayah Kerja pada Form Admin
+          document.getElementById('admUlp').value = CURRENT_USER_ULP;
+          document.getElementById('admUp3').value = CURRENT_USER_UP3;
+          document.getElementById('kolUlp').value = CURRENT_USER_ULP;
+          document.getElementById('kolUp3').value = CURRENT_USER_UP3;
+
+          // Buka sub-menu default Admin
+          pilihMenuAdmin('dashboard'); 
+
+        } else if (role === 'petugas') {
+          // --- PERAN: PETUGAS LAPANGAN ---
+          document.getElementById('sidebarUserInfo').innerText = `${nama} ${ulp}`;
+          document.getElementById('mobileTitleNav').innerText  = `${nama} ${ulp}`;
+
+          sidebarMenuHtml = `<li class="active">🛠️ Eksekusi Lapangan</li>`;
+
+          document.getElementById('sidebarMenuContainer').innerHTML   = sidebarMenuHtml;
+          document.getElementById('mobileNavTabsContainer').innerHTML = mobileTabsHtml;
+
+          tampilPanel('petugasEksekusi');
+
+          // Prefill Tanggal Transaksi Berita Acara
+          document.getElementById('pasang_pembatasTgl').value = tglFormat;
+          document.getElementById('bongkar_pembatasTgl').value = tglFormat;
+          document.getElementById('pasang_kwhTgl').value      = tglFormat;
+          document.getElementById('bongkar_kwhTgl').value      = tglFormat;
+
+          // Inisialisasi Papan Tanda Tangan Pelanggan & Petugas (Delay 200ms untuk Render DOM Canvas)
+          setTimeout(() => {
+            if (!padPelanggan) {
+              padPelanggan = new SignaturePad(document.getElementById('canvasPelanggan'));
+              padPetugas   = new SignaturePad(document.getElementById('canvasPetugas'));
+            }
+          }, 200);
+
+        } else if (role === 'manager') {
+          // --- PERAN: MANAGER ---
+          document.getElementById('sidebarUserInfo').innerText = `${nama} ${ulp}`;
+          document.getElementById('mobileTitleNav').innerText  = `${nama} ${ulp}`;
+
+          sidebarMenuHtml = `<li class="active">✍️ Approval Manager</li>`;
+
+          document.getElementById('sidebarMenuContainer').innerHTML   = sidebarMenuHtml;
+          document.getElementById('mobileNavTabsContainer').innerHTML = mobileTabsHtml;
+
+          tampilPanel('managerApproval');
+          muatListAgendaManager();
+
+          // Inisialisasi Papan Tanda Tangan Manager (Delay 200ms untuk Render DOM Canvas)
+          setTimeout(() => {
+            if (!padManager) {
+              padManager = new SignaturePad(document.getElementById('canvasManager'));
+            }
+          }, 200);
+        }
+      }
+
+      // ==========================================================================
+      // NAVIGASI ADMIN & KONTROLER PANEL
+      // ==========================================================================
+
+      /**
+       * Memilih dan mengaktifkan tab menu Admin (Individu, Kolektif, atau Arsip).
+       * @param {string} menuKey - Key menu yang dipilih ('individu', 'kolektif', 'arsip').
+       */
+      function pilihMenuAdmin(menuKey) {
+        const menuList = ['dashboard','individu', 'kolektif', 'arsip'];
+
+        // 1. Reset/kosongkan semua inputan setiap kali menu diklik
+        resetAllForms();
+
+        // Reset kelas active dari seluruh menu sidebar & mobile tab
+        menuList.forEach(k => {
+          const sb = document.getElementById(`menu_admin_${k}`);
+          const mb = document.getElementById(`mtab_admin_${k}`);
+          if (sb) sb.classList.remove('active');
+          if (mb) mb.classList.remove('active');
+        });
+
+        // Aktifkan menu sidebar & mobile tab yang dipilih
+        const activeSb = document.getElementById(`menu_admin_${menuKey}`);
+        const activeMb = document.getElementById(`mtab_admin_${menuKey}`);
+        if (activeSb) activeSb.classList.add('active');
+        if (activeMb) activeMb.classList.add('active');
+
+        // Pemetaan panel admin
+        const panelMap = {
+          dashboard: 'adminDashboard',
+          individu: 'adminIndividu',
+          kolektif: 'adminKolektif',
+          arsip: 'adminArsip'
+        };
+
+        if (panelMap[menuKey]) {
+          tampilPanel(panelMap[menuKey]);
+          if (menuKey === 'dashboard') {
+            muatDataDashboard();
+          }
+        }
+      }
+
+      /**
+      * Menyembunyikan seluruh panel aplikasi dan menampilkan panel yang dituju.
+      * @param {string} panelName - Nama panel ('adminIndividu', 'adminKolektif', 'adminArsip', 'petugasEksekusi', 'managerApproval').
+      */
+      function tampilPanel(panelName) {
+        const allPanels = [
+          'panelAdminDashboard',
+          'panelAdminIndividu',
+          'panelAdminKolektif',
+          'panelAdminArsip',
+          'panelPetugasEksekusi',
+          'panelManagerApproval'
+        ];
+
+        // Sembunyikan semua panel
+        allPanels.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        });
+
+        // Format ID panel sasaran (contoh: 'adminIndividu' -> 'panelAdminIndividu')
+        const targetId = 'panel' + panelName.charAt(0).toUpperCase() + panelName.slice(1);
+        const targetPanel = document.getElementById(targetId);
+
+        if (targetPanel) {
+          targetPanel.classList.remove('hidden');
+        }
+      }
+
+
+      // ==========================================================================
+      // OTENTIKASI PENGGUNA (LOGIN & LOGOUT)
+      // ==========================================================================
+
+      /**
+      * Memproses verifikasi login pengguna ke server backend Apps Script.
+      */
+      function prosesLogin() {
+        const user = document.getElementById("loginUsername").value.trim();
+        const pass = document.getElementById("loginPassword").value.trim();
+        const statusEl = document.getElementById("loginStatus");
+        const btnLogin = document.getElementById("btnLogin");
+        const loadingModal = document.getElementById('loadingModal');
+
+        // Validasi Input
+        if (!user || !pass) {
+          statusEl.style.color = "red";
+          statusEl.innerText = "Username dan Password wajib diisi!";
+          return;
+        }
+
+        // Tampilkan State Loading
+        statusEl.innerText = "";
+        document.getElementById('loadingText').innerText = "Memverifikasi Akun...";
+        loadingModal.classList.add('active');
+        btnLogin.disabled = true;
+
+        // Panggilan Backend Google Apps Script
+        google.script.run
+          .withSuccessHandler(function(res) {
+            loadingModal.classList.remove('active');
+            btnLogin.disabled = false;
+
+            if (res.success) {
+              // Simpan data sesi login di LocalStorage
+              localStorage.setItem('isLoggedIn', 'true');
+              localStorage.setItem('userRole', res.role);
+              localStorage.setItem('userNama', res.nama);
+              localStorage.setItem('userUlp', res.ulp || "");
+              localStorage.setItem('userUp3', res.up3 || "");
+
+              inisialisasiNavigasi(res.role, res.nama, res.ulp, res.up3);
+            } else {
+              statusEl.style.color = "red";
+              statusEl.innerText = res.message;
+            }
+          })
+          .withFailureHandler(function(err) {
+            loadingModal.classList.remove('active');
+            btnLogin.disabled = false;
+            statusEl.style.color = "red";
+            statusEl.innerText = "Error: " + err.message;
+          })
+          .verifikasiLogin(user, pass);
+      }
+
+      /**
+       * Memproses logout pengguna dan membersihkan sesi di browser.
+       */
+      function logout() {
+        // 1. Bersihkan isian form dan canvas tanda tangan (Petugas & Manager)
+        if (typeof resetFormPetugas === 'function') resetFormPetugas();
+        if (typeof resetFormManager === 'function') resetFormManager();
+
+        // 2. Reset variabel global transaksi Petugas
+        if (typeof CURRENT_FILE_BA_ID !== 'undefined') CURRENT_FILE_BA_ID = "";
+        if (typeof CURRENT_FILE_SPJBTL_ID !== 'undefined') CURRENT_FILE_SPJBTL_ID = "";
+        if (typeof CURRENT_NO_AGENDA !== 'undefined') CURRENT_NO_AGENDA = "";
+        if (typeof CURRENT_USER_ULP !== 'undefined') CURRENT_USER_ULP = "";
+        if (typeof CURRENT_USER_UP3 !== 'undefined') CURRENT_USER_UP3 = "";
+
+        // 3. Reset variabel global transaksi Manager
+        if (typeof MGR_PERMOHONAN_ID !== 'undefined') MGR_PERMOHONAN_ID = "";
+        if (typeof MGR_PK_ID !== 'undefined') MGR_PK_ID = "";
+        if (typeof MGR_BA_ID !== 'undefined') MGR_BA_ID = "";
+        if (typeof MGR_SPJBTL_ID !== 'undefined') MGR_SPJBTL_ID = "";
+        if (typeof MGR_NO_AGENDA !== 'undefined') MGR_NO_AGENDA = "";
+
+        // 4. Reset UI, input pencarian, & teks status Petugas
+        const searchInput = document.getElementById('searchNoAgenda');
+        const searchStatus = document.getElementById('searchStatus');
+        const formContent = document.getElementById('formPetugasContent');
+
+        if (searchInput) searchInput.value = "";
+        if (searchStatus) searchStatus.innerText = "";
+        if (formContent) formContent.classList.add('hidden');
+
+        // 5. Reset UI Manager (Sembunyikan form TTD, tampilkan kembali kontainer tabel)
+        const formManagerContent = document.getElementById('formManagerContent');
+        const managerTableContainer = document.getElementById('managerTableContainer');
+        const infoMgr = document.getElementById('infoManagerText');
+
+        if (formManagerContent) formManagerContent.classList.add('hidden');
+        if (managerTableContainer) managerTableContainer.classList.remove('hidden');
+        if (infoMgr) infoMgr.innerHTML = "";
+
+        // 6. Hapus data sesi lokal (localStorage)
+        const sessionKeys = ['isLoggedIn', 'userRole', 'userNama', 'userUlp', 'userUp3'];
+        sessionKeys.forEach(key => localStorage.removeItem(key));
+
+        // 7. Reset UI Form Login
+        document.getElementById('appContainer').classList.add('hidden');
+        document.getElementById('loginUsername').value = "";
+        document.getElementById('loginPassword').value = "";
+        document.getElementById('loginStatus').innerText = "";
+        document.getElementById('viewLogin').classList.remove('hidden');
+      }
+
+
+      // ==========================================================================
+      // UTILITAS FILE & CONVERTER
+      // ==========================================================================
+
+      /**
+      * Membaca berkas (File) dan mengonversinya menjadi objek berformat Base64 secara asynchronous.
+      * @param {File} file - Objek file dari input type="file".
+      * @returns {Promise<Object|null>} Promise berisi nama file dan data Base64.
+      */
+      function getBase64FromFile(file) {
+        return new Promise((resolve, reject) => {
+          if (!file) {
+            resolve(null);
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          
+          reader.onload = () => resolve({ name: file.name, data: reader.result });
+          reader.onerror = (error) => reject(error);
+        });
+      }
+
+      // ==========================================================================
+      // MODUL ADMIN: SIMPAN DATA INDIVIDU
+      // ==========================================================================
+
+      /**
+       * Memproses penyimpanan data pelanggan baru dan 4 berkas PDF pendukung oleh Admin.
+       */
+      async function prosesSimpanAdmin() {
+        const btnSimpan = document.getElementById('btnSimpanAdmin');
+        const loadingModal = document.getElementById('loadingModal');
+        const loadingText = document.getElementById('loadingText');
+
+        // 1. Ambil Nilai Input Formulir
+        const noAgenda = document.getElementById('admNoAgenda').value.trim();
+        const idPelanggan = document.getElementById('admIdPelanggan').value.trim();
+        const nama = document.getElementById('admNama').value.trim();
+        const alamat = document.getElementById('admAlamat').value.trim();
+        const jenisTransaksi = document.getElementById('admJenisTransaksi').value.trim();
+        const elUlp = document.getElementById('admUlp');
+        const elUp3 = document.getElementById('admUp3');
+        const ulp = elUlp ? elUlp.value.trim() : "";
+        const up3 = elUp3 ? elUp3.value.trim() : "";
+
+        // 2. Ambil Berkas File Input
+        const filePermohonan = document.getElementById('filePermohonan').files[0];
+        const filePerintahKerja = document.getElementById('filePerintahKerja').files[0];
+        const fileBeritaAcara = document.getElementById('fileBeritaAcara').files[0];
+        const fileSpjbtl = document.getElementById('fileSpjbtl').files[0];
+
+        // 3. Validasi Kelengkapan Data Formulir dan Berkas
+        if (
+          !noAgenda || 
+          !idPelanggan || 
+          !nama || 
+          !alamat || 
+          !jenisTransaksi ||
+          !filePermohonan || 
+          !filePerintahKerja || 
+          !fileBeritaAcara || 
+          !fileSpjbtl
+        ) {
+          tampilkanPopupNotif("Peringatan", "Semua kolom form dan file PDF wajib diisi!", false);
+          return;
+        }
+
+        // Validasi No Agenda (Wajib 18 Digit Angka)
+        if (!/^\d{18}$/.test(noAgenda)) {
+          tampilkanPopupNotif("Peringatan", "No Agenda harus berupa 18 digit angka!", false);
+          return;
+        }
+
+        // Validasi No Agenda (Wajib 12 Digit Angka)
+        if (!/^\d{12}$/.test(idPelanggan)) {
+          tampilkanPopupNotif("Peringatan", "ID Pelanggan harus berupa 12 digit angka!", false);
+          return;
+        }
+
+        // 4. Aktifkan State Loading UI
+        btnSimpan.disabled = true;
+        loadingText.innerText = "Menyimpan data...";
+        loadingModal.classList.add('active');
+
+        // 5. Konversi 4 Berkas PDF ke Base64 Secara Paralel (Optimasi Kecepatan)
+        try {
+          const [
+            b64Permohonan,
+            b64PerintahKerja,
+            b64BeritaAcara,
+            b64Spjbtl
+          ] = await Promise.all([
+            getBase64FromFile(filePermohonan),
+            getBase64FromFile(filePerintahKerja),
+            getBase64FromFile(fileBeritaAcara),
+            getBase64FromFile(fileSpjbtl)
+          ]);
+
+          const objData = {
+            noAgenda,
+            idPelanggan,
+            nama,
+            alamat,
+            jenisTransaksi,
+            ulp: CURRENT_USER_ULP || ulp,
+            up3: CURRENT_USER_UP3 || up3,
+            filePermohonan: b64Permohonan,
+            filePerintahKerja: b64PerintahKerja,
+            fileBeritaAcara: b64BeritaAcara,
+            fileSpjbtl: b64Spjbtl
+          };
+
+          // 6. Kirim Data ke Backend Google Apps Script
+          google.script.run
+            .withSuccessHandler((res) => {
+              loadingModal.classList.remove('active');
+              btnSimpan.disabled = false;
+
+              tampilkanPopupNotif("Berhasil disimpan", res.message, true);
+              resetFormAdminIndividu();
+            })
+            .withFailureHandler((err) => {
+              loadingModal.classList.remove('active');
+              btnSimpan.disabled = false;
+
+              const pesanBersih = bersihkanPesanError(err.message);
+              tampilkanPopupNotif("Peringatan", pesanBersih, false);
+            })
+            .simpanDataAdmin(objData);
+
+        } catch (e) {
+          loadingModal.classList.remove('active');
+          btnSimpan.disabled = false;
+
+          const pesanBersih = bersihkanPesanError(e.message);
+          tampilkanPopupNotif("Peringatan", pesanBersih, false);
+        }
+      }
+
+      /**
+       * Membersihkan awalan teks error bawaan JavaScript/GAS.
+       */
+      function bersihkanPesanError(pesan) {
+        if (!pesan) return '';
+        return pesan
+          .replace(/Error:\s*/gi, '')
+          .replace(/Gagal menyimpan data:\s*/gi, '')
+          .trim();
+      }
+
+      /**
+       * Membersihkan isian kolom formulir Admin setelah data berhasil disimpan.
+       */
+      function resetFormAdminIndividu() {
+        const fields = [
+          'admNoAgenda',
+          'admIdPelanggan',
+          'admNama',
+          'admAlamat',
+          'admJenisTransaksi',
+          'filePermohonan',
+          'filePerintahKerja',
+          'fileBeritaAcara',
+          'fileSpjbtl'
+        ];
+
+        fields.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+
+        const elUlp = document.getElementById('admUlp');
+        const elUp3 = document.getElementById('admUp3');
+        if (elUlp) elUlp.value = CURRENT_USER_ULP || "";
+        if (elUp3) elUp3.value = CURRENT_USER_UP3 || "";
+      }
+
+      // ==========================================================================
+      // MODUL ADMIN: PENCARIAN & PRATINJAU ARSIP DOKUMEN
+      // ==========================================================================
+
+      /**
+       * Memproses pencarian arsip dokumen pelanggan berdasarkan Nomor Agenda.
+       */
+      function cariArsipAgenda() {
+        const queryInput = document.getElementById('searchArsipAgenda');
+        const statusEl   = document.getElementById('searchArsipStatus');
+        const contentEl  = document.getElementById('hasilArsipContent');
+        const infoEl     = document.getElementById('infoArsipText');
+        const filesEl    = document.getElementById('listArsipFiles');
+
+        const query = queryInput.value.trim();
+
+        // Validasi Input Pencarian
+        if (!query) {
+          tampilkanPopupNotif("Peringatan", "Masukkan No Agenda terlebih dahulu!", false);
+          return;
+        }
+
+        // Validasi No Agenda (Wajib 18 Digit Angka)
+        if (!/^\d{18}$/.test(query)) { // <-- DIPERBAIKI: Menggunakan variabel `query`
+          tampilkanPopupNotif("Peringatan", "No Agenda harus berupa 18 digit angka!", false);
+          return;
+        }
+
+        // Set Tampilan State Loading
+        statusEl.innerText = "Mencari arsip dokumen...";
+        contentEl.classList.add('hidden');
+
+        // Parameter Wilayah Pengguna Aktif
+        const userUlpAktif = CURRENT_USER_ULP;
+        const userUp3Aktif = CURRENT_USER_UP3;
+
+        // Panggilan Backend Google Apps Script
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.found) {
+              statusEl.innerHTML = "<span style='color:#059669; font-weight:600;'>Arsip dokumen ditemukan</span>";
+              
+              // Render Informasi Pelanggan
+              infoEl.innerHTML = `
+                <b>No Agenda:</b> ${res.noAgenda}<br>
+                <b>ID Pelanggan:</b> ${res.idPelanggan}<br>
+                <b>Nama:</b> ${res.nama}<br>
+                <b>Alamat:</b> ${res.alamat}<br>
+                <b>Jenis Transaksi:</b> ${res.jenisTransaksi || '-'}
+              `;
+
+              // Daftar Berkas Berkas Digital
+              const daftarBerkas = [
+                { label: "📄 Berkas Permohonan (Signed)", id: res.filePermohonanId, prefix: "Permohonan" },
+                { label: "📄 Perintah Kerja (PK) (Signed)", id: res.filePerintahKerjaId, prefix: "PK" },
+                { label: "📄 Berita Acara (BA) (Signed)",  id: res.fileBeritaAcaraId,  prefix: "BA" },
+                { label: "📄 SPJBTL (Signed)",             id: res.fileSpjbtlId,       prefix: "SPJBTL" }
+              ];
+
+              // Render Komponen List Berkas Secara Dinamis
+              filesEl.innerHTML = daftarBerkas.map(file => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px 15px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:8px;">
+                  <span>${file.label}</span>
+                  <button class="btn-pilih" onclick="unduhMockArsip('${file.id}', '${file.prefix}_${res.noAgenda}')">Lihat</button>
+                </div>
+              `).join('');
+
+              contentEl.classList.remove('hidden');
+            } else {
+              statusEl.innerHTML = "";
+              tampilkanPopupNotif("Pemberitahuan", res.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            statusEl.innerHTML = "";
+            tampilkanPopupNotif("Gagal", "Error: " + err.message, false);
+          })
+          .cariDataArsipByAgenda(query, userUlpAktif, userUp3Aktif);
+        }
+
+        /**
+         * Membuka tautan pratinjau berkas PDF di Google Drive pada tab baru.
+         * @param {string} fileId - ID Berkas Google Drive.
+         * @param {string} namaFile - Nama label berkas.
+         */
+        function unduhMockArsip(fileId, namaFile) {
+          if (!fileId) {
+            tampilkanPopupNotif("Peringatan", "ID File PDF tidak tersedia!", false);
+            return;
+          }
+          
+          const driveViewerUrl = `https://drive.google.com/file/d/${fileId}/view`;
+          window.open(driveViewerUrl, '_blank');
+        }
+
+      // ==========================================================================
+      // MODUL PETUGAS: PENCARIAN BERDASARKAN WILAYAH LOGIN & PEMROSESAN DOKUMEN PDF
+      // ==========================================================================
+
+      // Variabel Global untuk menyimpan jenis transaksi yang sedang aktif
+      let CURRENT_JENIS_TRANSAKSI = ""; 
+
+      /**
+       * Fungsi pembantu untuk mengonversi string Base64 ke Uint8Array.
+       */
+      function base64ToUint8Array(base64) {
+        const rawData = atob(base64.includes(',') ? base64.split(',')[1] : base64);
+        return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+      }
+
+      /**
+       * Memproses pencarian data agenda berdasarkan input pengguna.
+       */
+      async function cariAgenda() {
+        const searchInput = document.getElementById('searchNoAgenda');
+        const searchStatus = document.getElementById('searchStatus');
+        const formContent = document.getElementById('formPetugasContent');
+        const infoPelangganText = document.getElementById('infoPelangganText');
+
+        const query = searchInput.value.trim();
+
+        if (!query) {
+          tampilkanPopupNotif("Peringatan", "Masukkan No Agenda terlebih dahulu!", false);
+          return;
+        }
+
+        // Validasi No Agenda (Wajib 18 Digit Angka)
+        if (!/^\d{18}$/.test(query)) {
+          tampilkanPopupNotif("Peringatan", "No Agenda harus berupa 18 digit angka!", false);
+          return;
+        }
+
+        searchStatus.innerText = "Mencari data agenda...";
+        formContent.classList.add('hidden');
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.found) {
+              searchStatus.innerHTML = "<span style='color:green'>Data ditemukan, silakan lengkapi form</span>";
+              
+              CURRENT_FILE_BA_ID = result.fileBeritaAcaraId;
+              CURRENT_FILE_SPJBTL_ID = result.fileSpjbtlId;
+              CURRENT_NO_AGENDA = result.noAgenda;
+              
+              // SIMPAN JENIS TRANSAKSI KE VARIABEL GLOBAL
+              CURRENT_JENIS_TRANSAKSI = (result.jenisTransaksi || "").toUpperCase().trim();
+
+              infoPelangganText.innerHTML = `
+                <b>No Agenda:</b> ${result.noAgenda}<br>
+                <b>ID Pelanggan:</b> ${result.idPelanggan}<br>
+                <b>Nama:</b> ${result.nama}<br>
+                <b>Alamat:</b> ${result.alamat}<br>
+                <b>Jenis Transaksi:</b> ${result.jenisTransaksi || '-'}
+              `;
+
+              // ==========================================================
+              // LOGIKA PENGATURAN TAB & PANEL BERDASARKAN JENIS TRANSAKSI
+              // ==========================================================
+              const btnTabPasang = document.getElementById('btnTabPasang');
+              const btnTabBongkar = document.getElementById('btnTabBongkar');
+              const contentPasang = document.getElementById('contentPanelPasang');
+              const contentBongkar = document.getElementById('contentPanelBongkar');
+              const tabContainer = document.querySelector('.tab-container');
+
+              // Pastikan container tab selalu muncul
+              if (tabContainer) tabContainer.style.display = "flex";
+
+              if (CURRENT_JENIS_TRANSAKSI === "PASANG BARU") {
+                // 1. Tab Pemasangan Aktif, Tab Pembongkaran di-disable
+                if (btnTabPasang) {
+                  btnTabPasang.disabled = false;
+                  btnTabPasang.style.opacity = "1";
+                  btnTabPasang.style.cursor = "pointer";
+                }
+                
+                if (btnTabBongkar) {
+                  btnTabBongkar.disabled = true;
+                  btnTabBongkar.style.opacity = "0.4"; // Efek visual disabled (redup)
+                  btnTabBongkar.style.cursor = "not-allowed";
+                }
+
+                // Tampilkan panel pasang, sembunyikan panel bongkar
+                if (contentPasang) contentPasang.classList.remove('hidden');
+                if (contentBongkar) contentBongkar.classList.add('hidden');
+                
+                if (typeof switchTab === 'function') {
+                  switchTab('pasang');
+                }
+
+              } else if (CURRENT_JENIS_TRANSAKSI === "PERUBAHAN DAYA") {
+                // 2. Kedua Tab Aktif & Bisa Diklik
+                if (btnTabPasang) {
+                  btnTabPasang.disabled = false;
+                  btnTabPasang.style.opacity = "1";
+                  btnTabPasang.style.cursor = "pointer";
+                }
+
+                if (btnTabBongkar) {
+                  btnTabBongkar.disabled = false;
+                  btnTabBongkar.style.opacity = "1"; // Normal kembali
+                  btnTabBongkar.style.cursor = "pointer";
+                }
+
+                // Default buka tab pasang dulu
+                if (contentPasang) contentPasang.classList.remove('hidden');
+                if (contentBongkar) contentBongkar.classList.add('hidden');
+                
+                if (typeof switchTab === 'function') {
+                  switchTab('pasang');
+                }
+              }
+              // ==========================================================
+              // Ambil tanggal hari ini format YYYY-MM-DD atau sesuai kebutuhan
+                const tanggalHariIni = new Date().toISOString().split('T')[0];
+
+                // Isi otomatis field tanggal jika kosong dari server
+                document.getElementById('pasang_pembatasTgl').value = result.pasang_pembatasTgl || tanggalHariIni;
+                document.getElementById('pasang_kwhTgl').value = result.pasang_kwhTgl || tanggalHariIni;
+
+                // Jika Perubahan Daya, isi juga bagian bongkar
+                if (CURRENT_JENIS_TRANSAKSI === "PERUBAHAN DAYA") {
+                  document.getElementById('bongkar_pembatasTgl').value = result.bongkar_pembatasTgl || tanggalHariIni;
+                  document.getElementById('bongkar_kwhTgl').value = result.bongkar_kwhTgl || tanggalHariIni;
+                }
+
+              formContent.classList.remove('hidden');
+              
+              setTimeout(() => {
+                if (padPelanggan) padPelanggan.resizeCanvas();
+                if (padPetugas) padPetugas.resizeCanvas();
+              }, 100);
+            } else {
+              searchStatus.innerHTML = "";
+              CURRENT_JENIS_TRANSAKSI = "";
+              tampilkanPopupNotif("Pemberitahuan", result.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            searchStatus.innerHTML = "";
+            CURRENT_JENIS_TRANSAKSI = "";
+            tampilkanPopupNotif("Gagal", "Error: " + err.message, false);
+          })
+          .cariDataByAgenda(query, CURRENT_USER_ULP, CURRENT_USER_UP3);
+      }
+
+      /**
+       * Memproses pengisian formulir, penandaan PDF, dan penyimpanan data akhir.
+       */
+      async function prosesMultiPDF() {
+        if (!CURRENT_FILE_BA_ID) {
+          tampilkanPopupNotif("Peringatan", "File Berita Acara tidak ditemukan!", false);
+          return;
+        }
+
+        // 1. Ekstraksi Nilai Formulir Panel Pemasangan & Pembongkaran ke Dalam Objek
+        const getValue = (id) => {
+          const el = document.getElementById(id);
+          return el ? el.value.trim() : "";
+        };
+
+        const formData = {
+          // Data Pemasangan
+          pasang_pembatasTgl: getValue('pasang_pembatasTgl'),
+          pasang_pembatasMerk: getValue('pasang_pembatasMerk'),
+          pasang_pembatasType: getValue('pasang_pembatasType'),
+          pasang_pembatasNomor: getValue('pasang_pembatasNomor'),
+          pasang_pembatasThnTera: getValue('pasang_pembatasThnTera'),
+          pasang_pembatasThnBuat: getValue('pasang_pembatasThnBuat'),
+          pasang_pembatasUkuran: getValue('pasang_pembatasUkuran'),
+          pasang_pembatasSetting: getValue('pasang_pembatasSetting'),
+          
+          pasang_kwhTgl: getValue('pasang_kwhTgl'),
+          pasang_kwhMerk: getValue('pasang_kwhMerk'),
+          pasang_kwhType: getValue('pasang_kwhType'),
+          pasang_kwhNomor: getValue('pasang_kwhNomor'),
+          pasang_kwhThnTera: getValue('pasang_kwhThnTera'),
+          pasang_kwhThnBuat: getValue('pasang_kwhThnBuat'),
+          pasang_kwhKemampuan: getValue('pasang_kwhKemampuan'),
+          pasang_kwhKonstanta: getValue('pasang_kwhKonstanta'),
+          pasang_lwbp: getValue('pasang_lwbp'),
+          pasang_wbp: getValue('pasang_wbp'),
+          pasang_kwhSisa: getValue('pasang_kwhSisa'),
+          pasang_faktorKali: getValue('pasang_faktorKali'),
+          pasang_trafoArus: getValue('pasang_trafoArus'),
+          pasang_trafoTegangan: getValue('pasang_trafoTegangan'),
+
+          // Data Pembongkaran
+          bongkar_pembatasTgl: getValue('bongkar_pembatasTgl'),
+          bongkar_pembatasMerk: getValue('bongkar_pembatasMerk'),
+          bongkar_pembatasType: getValue('bongkar_pembatasType'),
+          bongkar_pembatasNomor: getValue('bongkar_pembatasNomor'),
+          bongkar_pembatasThnTera: getValue('bongkar_pembatasThnTera'),
+          bongkar_pembatasThnBuat: getValue('bongkar_pembatasThnBuat'),
+          bongkar_pembatasUkuran: getValue('bongkar_pembatasUkuran'),
+          bongkar_pembatasSetting: getValue('bongkar_pembatasSetting'),
+          
+          bongkar_kwhTgl: getValue('bongkar_kwhTgl'),
+          bongkar_kwhMerk: getValue('bongkar_kwhMerk'),
+          bongkar_kwhType: getValue('bongkar_kwhType'),
+          bongkar_kwhNomor: getValue('bongkar_kwhNomor'),
+          bongkar_kwhThnTera: getValue('bongkar_kwhThnTera'),
+          bongkar_kwhThnBuat: getValue('bongkar_kwhThnBuat'),
+          bongkar_kwhKemampuan: getValue('bongkar_kwhKemampuan'),
+          bongkar_kwhKonstanta: getValue('bongkar_kwhKonstanta'),
+          bongkar_lwbp: getValue('bongkar_lwbp'),
+          bongkar_wbp: getValue('bongkar_wbp'),
+          bongkar_kwhSisa: getValue('bongkar_kwhSisa'),
+          bongkar_faktorKali: getValue('bongkar_faktorKali'),
+          bongkar_trafoArus: getValue('bongkar_trafoArus'),
+          bongkar_trafoTegangan: getValue('bongkar_trafoTegangan')
+        };
+
+        // 1. Ambil jenis transaksi dari variabel global
+        const jenisTransaksi = (CURRENT_JENIS_TRANSAKSI || "").toUpperCase().trim();
+
+        // 2. Validasi Formulir Berdasarkan Jenis Transaksi
+        let isFormIncomplete = false;
+
+        if (jenisTransaksi === "PASANG BARU") {
+          // Jika Pasang Baru, HANYA validasi field yang berawalan 'pasang_'
+          isFormIncomplete = Object.entries(formData).some(([key, val]) => key.startsWith('pasang_') && !val);
+        } else {
+          // Jika Perubahan Daya, validasi seluruh field (Pemasangan & Pembongkaran)
+          isFormIncomplete = Object.values(formData).some((val) => !val);
+        }
+
+        if (isFormIncomplete) {
+          tampilkanPopupNotif("Peringatan", "Semua entri form wajib diisi sesuai jenis transaksi!", false);
+          return;
+        }
+
+        if (!padPelanggan || padPelanggan.isEmpty() || !padPetugas || padPetugas.isEmpty()) {
+          tampilkanPopupNotif("Peringatan", "Tanda Tangan Pelanggan dan Tanda Tangan Petugas wajib diisi!", false);
+          return;
+        }
+
+        // 3. Pengaturan Tampilan UI Loading
+        const btnSubmit = document.getElementById('btnSubmitPetugas');
+        const loadingModal = document.getElementById('loadingModal');
+        const loadingText = document.getElementById('loadingText');
+
+        btnSubmit.disabled = true;
+        loadingText.innerText = "Menyimpan data...";
+        loadingModal.classList.add('active');
+
+        const ttdPelangganBase64 = padPelanggan.toDataURL("image/png");
+        const ttdPetugasBase64 = padPetugas.toDataURL("image/png");
+
+        try {
+          // 4. Pemrosesan PDF Berita Acara (BA)
+          const baServer = await new Promise((res, rej) => {
+            google.script.run.withSuccessHandler(res).withFailureHandler(rej).getPdfAsli(CURRENT_FILE_BA_ID);
+          });
+
+          const docBa = await PDFLib.PDFDocument.load(base64ToUint8Array(baServer));
+          const pageBa = docBa.getPages()[0];
+          const fontTimes = await docBa.embedFont(PDFLib.StandardFonts.Helvetica);
+          const fontSize = 8;
+
+          // 5. Pengisian Teks Dokumen BA: Data Pemasangan (Selalu Diisi)
+          pageBa.drawText(formData.pasang_pembatasTgl, { x: 235, y: 572, size: fontSize, font: fontTimes });
+          pageBa.drawText(`${formData.pasang_pembatasMerk} / ${formData.pasang_pembatasType} / ${formData.pasang_pembatasNomor}`, { x: 235, y: 562, size: fontSize, font: fontTimes });
+          pageBa.drawText(`${formData.pasang_pembatasThnTera} / ${formData.pasang_pembatasThnBuat}`, { x: 235, y: 552, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_pembatasUkuran, { x: 235, y: 542, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_pembatasSetting, { x: 295, y: 542, size: fontSize, font: fontTimes });
+
+          pageBa.drawText(formData.pasang_kwhTgl, { x: 235, y: 515, size: fontSize, font: fontTimes });
+          pageBa.drawText(`${formData.pasang_kwhMerk} / ${formData.pasang_kwhType} / ${formData.pasang_kwhNomor}`, { x: 235, y: 505, size: fontSize, font: fontTimes });
+          pageBa.drawText(`${formData.pasang_kwhThnTera} / ${formData.pasang_kwhThnBuat}`, { x: 235, y: 495, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_kwhKemampuan, { x: 235, y: 485, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_kwhKonstanta, { x: 235, y: 475, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_lwbp, { x: 235, y: 465, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_wbp, { x: 235, y: 455, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_kwhSisa, { x: 235, y: 445, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_trafoArus, { x: 275, y: 435, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_trafoTegangan, { x: 345, y: 435, size: fontSize, font: fontTimes });
+          pageBa.drawText(formData.pasang_faktorKali, { x: 235, y: 425, size: fontSize, font: fontTimes });
+
+          // --- Pengisian Data Pembongkaran (Hanya jika Perubahan Daya) ---
+          if (jenisTransaksi === "PERUBAHAN DAYA") {
+            pageBa.drawText(formData.bongkar_pembatasTgl, { x: 235 + 152, y: 572, size: fontSize, font: fontTimes });
+            pageBa.drawText(`${formData.bongkar_pembatasMerk} / ${formData.bongkar_pembatasType} / ${formData.bongkar_pembatasNomor}`, { x: 235 + 152, y: 562, size: fontSize, font: fontTimes });
+            pageBa.drawText(`${formData.bongkar_pembatasThnTera} / ${formData.bongkar_pembatasThnBuat}`, { x: 235 + 152, y: 552, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_pembatasUkuran, { x: 235 + 152, y: 542, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_pembatasSetting, { x: 295 + 152, y: 542, size: fontSize, font: fontTimes });
+
+            pageBa.drawText(formData.bongkar_kwhTgl, { x: 235 + 152, y: 515, size: fontSize, font: fontTimes });
+            pageBa.drawText(`${formData.bongkar_kwhMerk} / ${formData.bongkar_kwhType} / ${formData.bongkar_kwhNomor}`, { x: 235 + 152, y: 505, size: fontSize, font: fontTimes });
+            pageBa.drawText(`${formData.bongkar_kwhThnTera} / ${formData.bongkar_kwhThnBuat}`, { x: 235 + 152, y: 495, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_kwhKemampuan, { x: 235 + 152, y: 485, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_kwhKonstanta, { x: 235 + 152, y: 475, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_lwbp, { x: 235 + 152, y: 465, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_wbp, { x: 235 + 152, y: 455, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_kwhSisa, { x: 235 + 152, y: 445, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_trafoArus, { x: 275 + 152, y: 435, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_trafoTegangan, { x: 345 + 152, y: 435, size: fontSize, font: fontTimes });
+            pageBa.drawText(formData.bongkar_faktorKali, { x: 235 + 152, y: 425, size: fontSize, font: fontTimes });
+          }
+
+          // Penyematan Tanda Tangan Digital pada BA
+          const pngPelanggan = await docBa.embedPng(base64ToUint8Array(ttdPelangganBase64));
+          const pngPetugas = await docBa.embedPng(base64ToUint8Array(ttdPetugasBase64));
+
+          pageBa.drawImage(pngPelanggan, { x: 45, y: 135, width: 100, height: 45 });
+          pageBa.drawImage(pngPetugas, { x: 230, y: 135, width: 100, height: 45 });
+
+          const base64BaFinal = uint8ArrayToBase64(await docBa.save());
+          let base64SpjbtlFinal = "";
+
+          // 6. Pemrosesan PDF SPJBTL (Jika Ada)
+          if (CURRENT_FILE_SPJBTL_ID) {
+            const spjbtlServer = await new Promise((res, rej) => {
+              google.script.run.withSuccessHandler(res).withFailureHandler(rej).getPdfAsli(CURRENT_FILE_SPJBTL_ID);
+            });
+
+            const docSpjbtl = await PDFLib.PDFDocument.load(base64ToUint8Array(spjbtlServer));
+            const pageSpjbtl = docSpjbtl.getPages()[docSpjbtl.getPageCount() - 1];
+
+            const pngPelangganSpjbtl = await docSpjbtl.embedPng(base64ToUint8Array(ttdPelangganBase64));
+            pageSpjbtl.drawImage(pngPelangganSpjbtl, { x: 325, y: 340, width: 120, height: 55 });
+
+            base64SpjbtlFinal = uint8ArrayToBase64(await docSpjbtl.save());
+          }
+
+          // 7. Pengiriman Data Kembali ke Server
+          google.script.run
+            .withSuccessHandler(() => {
+              loadingModal.classList.remove('active');
+              tampilkanPopupNotif("Berhasil disimpan", "Berita acara dan tanda tangan berhasil disimpan.", true);
+              btnSubmit.disabled = false;
+
+              // Reset semua input form & tanda tangan
+              resetFormPetugas();
+
+              // Reset bar pencarian & sembunyikan form eksekusi
+              document.getElementById('searchNoAgenda').value = "";
+              document.getElementById('searchStatus').innerText = "";
+              document.getElementById('formPetugasContent').classList.add('hidden');
+              CURRENT_JENIS_TRANSAKSI = "";
+            })
+            .withFailureHandler((error) => {
+              loadingModal.classList.remove('active');
+              tampilkanPopupNotif("Gagal", "Error: " + error.message, false);
+              btnSubmit.disabled = false;
+            })
+            .timpaPdfGanda(CURRENT_FILE_BA_ID, base64BaFinal, CURRENT_FILE_SPJBTL_ID, base64SpjbtlFinal, CURRENT_NO_AGENDA);
+
+        } catch (errPdf) {
+          loadingModal.classList.remove('active');
+          tampilkanPopupNotif("Gagal", "Error PDF: " + errPdf.message, false);
+          btnSubmit.disabled = false;
+        }
+      }
+
+      // ===================================================
+      // MODUL PETUGAS: FUNGSI TAB MENU 
+      // ===================================================
+
+      function switchTab(type) {
+        const btnBongkar = document.getElementById('btnTabBongkar');
+        
+        // PENCEGAHAN: Jika tab bongkar dalam kondisi disabled (untuk PASANG BARU), hentikan fungsi
+        if (type === 'bongkar' && btnBongkar && btnBongkar.disabled) {
+          return;
+        }
+
+        const panelPasang = document.getElementById('contentPanelPasang');
+        const panelBongkar = document.getElementById('contentPanelBongkar');
+        const btnPasang = document.getElementById('btnTabPasang');
+
+        if (type === 'pasang') {
+          panelPasang.classList.remove('hidden');
+          panelBongkar.classList.add('hidden');
+          
+          // Atur kelas aktif tombol
+          btnPasang.className = "tab-btn active-pasang";
+          btnBongkar.className = "tab-btn";
+        } else {
+          panelPasang.classList.add('hidden');
+          panelBongkar.classList.remove('hidden');
+          
+          // Atur kelas aktif tombol
+          btnBongkar.className = "tab-btn active-bongkar";
+          btnPasang.className = "tab-btn";
+        }
+      }
+
+      // ===================================================
+      // MODUL PETUGAS: FUNGSI ATUR TAMPILAN PANEL BERDASARKAN JENIS TRANSAKSI
+      // ===================================================
+      /**
+       * Mengatur tampilan tab dan panel form berdasarkan jenis transaksi yang ditemukan.
+       * @param {Object} data - Data agenda yang dikembalikan dari server
+       */
+      function aturTampilanPanelTransaksi(data) {
+        const jenisTransaksi = (data.jenisTransaksi || "").toUpperCase().trim();
+
+        const btnTabPasang = document.getElementById('btnTabPasang');
+        const btnTabBongkar = document.getElementById('btnTabBongkar');
+        const contentPasang = document.getElementById('contentPanelPasang');
+        const contentBongkar = document.getElementById('contentPanelBongkar');
+        const tabContainer = document.querySelector('.tab-container');
+
+        // Pastikan container tab selalu muncul
+        if (tabContainer) tabContainer.style.display = "flex";
+
+        if (jenisTransaksi === "PASANG BARU") {
+          // 1. Tab Pemasangan Aktif, Tab Pembongkaran di-disable (tidak disembunyikan)
+          if (btnTabPasang) {
+            btnTabPasang.disabled = false;
+            btnTabPasang.style.opacity = "1";
+            btnTabPasang.style.cursor = "pointer";
+          }
+          
+          if (btnTabBongkar) {
+            btnTabBongkar.disabled = true;
+            btnTabBongkar.style.opacity = "0.4"; // Efek visual redup
+            btnTabBongkar.style.cursor = "not-allowed";
+          }
+
+          // Tampilkan panel pasang, sembunyikan panel bongkar
+          if (contentPasang) contentPasang.classList.remove('hidden');
+          if (contentBongkar) contentBongkar.classList.add('hidden');
+
+          // Panggil switchTab ke pasang agar state-nya sinkron
+          if (typeof switchTab === 'function') {
+            switchTab('pasang');
+          }
+
+          // Kosongkan dan matikan input bongkar agar dianggap selesai/diabaikan oleh sistem
+          toggleInputGroup(contentBongkar, false);
+          toggleInputGroup(contentPasang, true);
+
+        } else if (jenisTransaksi === "PERUBAHAN DAYA") {
+          // 2. Keduanya aktif dan bisa diklik
+          if (btnTabPasang) {
+            btnTabPasang.disabled = false;
+            btnTabPasang.style.opacity = "1";
+            btnTabPasang.style.cursor = "pointer";
+          }
+
+          if (btnTabBongkar) {
+            btnTabBongkar.disabled = false;
+            btnTabBongkar.style.opacity = "1"; // Normal kembali
+            btnTabBongkar.style.cursor = "pointer";
+          }
+
+          // Default aktifkan tab pemasangan dulu saat pertama load
+          if (contentPasang) contentPasang.classList.remove('hidden');
+          if (contentBongkar) contentBongkar.classList.add('hidden');
+          
+          if (typeof switchTab === 'function') {
+            switchTab('pasang');
+          }
+
+          // Aktifkan kembali input di kedua panel
+          toggleInputGroup(contentPasang, true);
+          toggleInputGroup(contentBongkar, true);
+        }
+      }
+
+      /**
+       * Fungsi pembantu untuk mengaktifkan/menonaktifkan atribut required pada input dalam panel
+       */
+      function toggleInputGroup(panelElement, isEnabled) {
+        if (!panelElement) return;
+        const inputs = panelElement.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+          if (!isEnabled) {
+            input.removeAttribute('required');
+            input.value = ""; // Mengosongkan nilai panel bongkar jika PASANG BARU
+          } else {
+            // Kembalikan atribut required jika diperlukan oleh sistem validasi Anda
+            // input.setAttribute('required', 'true'); 
+          }
+        });
+      }
+
+      // ==========================================================================
+      // MODUL PETUGAS: REVIEW DOKUMEN SEBELUM TANDA TANGAN PELANGGAN
+      // ==========================================================================
+
+      function bukaReviewPDF() {
+        const noAgenda = document.getElementById('searchNoAgenda').value;
+        if (!noAgenda) {
+            alert('Mohon masukkan atau cari No Agenda terlebih dahulu.');
+            return;
+        }
+
+        // Berikan delay sedikit (misal 400 milidetik) sebelum modal/panel terbuka
+        setTimeout(() => {
+            const modalReview = document.getElementById('modalReviewPDF');
+            if (modalReview) {
+                modalReview.classList.remove('hidden');
+            }
+        }, 600);
+
+        // Proses pengambilan URL PDF di background tetap berjalan
+        google.script.run.withSuccessHandler(function(response) {
+            if (response && response.success) {
+                const iframeBA = document.getElementById('iframeBeritaAcara');
+                const iframeSpj = document.getElementById('iframeSpjbtl');
+                
+                if (iframeBA) iframeBA.src = response.beritaAcaraUrl || '';
+                if (iframeSpj) iframeSpj.src = response.spjbtlUrl || '';
+            } else {
+                alert((response && response.message) || 'Gagal memuat dokumen PDF.');
+            }
+        }).withFailureHandler(function(error) {
+            alert('Terjadi kesalahan sistem: ' + (error.message || error));
+        }).generatePDFBeritaAcaraDanSPJBTL(noAgenda);
+      }
+
+      function tutupModalPDF() {
+        document.getElementById('modalReviewPDF').classList.add('hidden');
+        document.getElementById('iframeBeritaAcara').src = '';
+        document.getElementById('iframeSpjbtl').src = '';
+      }
+
+      // ==========================================================================
+      // MODUL PETUGAS: CANVAS TTD PELANGGAN TERBUKA SETELAH CEKLIS PERSETUJUAN
+      // ==========================================================================
+
+      function togglePersetujuan() {
+        const checkbox = document.getElementById('checkKonfirmasiReview');
+        const wrapperCanvas = document.getElementById('wrapperCanvasPelanggan');
+
+        if (checkbox.checked) {
+          // Jika dicentang: Aktifkan kembali canvas tanda tangan
+          wrapperCanvas.style.pointerEvents = 'auto';
+          wrapperCanvas.style.opacity = '1';
+          wrapperCanvas.style.backgroundColor = 'transparent';
+        } else {
+          // Jika tidak dicentang: Matikan canvas (tidak bisa digambar) dan bersihkan tanda tangannya jika perlu
+          wrapperCanvas.style.pointerEvents = 'none';
+          wrapperCanvas.style.opacity = '0.5';
+          wrapperCanvas.style.backgroundColor = '#f1f5f9';
+          
+          // Opsional: Otomatis hapus tanda tangan jika ceklis dibatalkan
+          if (typeof padPelanggan !== 'undefined' && padPelanggan) {
+            padPelanggan.clear();
+          }
+        }
+      }
+      
+
+      // ==========================================================================
+      // MODUL MANAGER: APPROVAL & PENANDATANGANAN BERDASARKAN WILAYAH LOGIN
+      // ==========================================================================
+
+      /**
+       * Fungsi pembantu untuk mengonversi string Base64 ke Uint8Array.
+       */
+      function base64ToUint8Array(base64) {
+        const rawData = atob(base64.includes(',') ? base64.split(',')[1] : base64);
+        return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+      }
+
+      /**
+       * Memuat daftar agenda berstatus 'Selesai' yang membutuhkan approval Manager.
+       */
+      function muatListAgendaManager() {
+        const tableContainer = document.getElementById('listAgendaTable');
+        tableContainer.innerHTML = "Memuat data...";
+
+        google.script.run
+          .withSuccessHandler((dataList) => {
+            if (!dataList || dataList.length === 0) {
+              tableContainer.innerHTML = `
+                <p style="color: #64748b; font-style: italic;">
+                  Belum ada agenda berstatus 'Selesai' dari petugas.
+                </p>`;
+              return;
+            }
+
+            // Generate baris tabel secara dinamis menggunakan Array.map
+            const rowsHtml = dataList.map((item) => `
+              <tr>
+                <td><b>${item.noAgenda}</b></td>
+                <td>${item.nama}</td>
+                <td>
+                  <button class="btn-pilih" onclick='pilihAgendaManager(${JSON.stringify(item)})'>
+                    Pilih & TTD
+                  </button>
+                </td>
+              </tr>
+            `).join('');
+
+            tableContainer.innerHTML = `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>No Agenda</th>
+                    <th>Nama Pelanggan</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+              </table>`;
+          })
+          .withFailureHandler((err) => {
+            tableContainer.innerHTML = `<span style="color:red">Gagal memuat data: ${err.message}</span>`;
+          })
+          .getAgendaSelesaiList(CURRENT_USER_ULP, CURRENT_USER_UP3);
+      }
+
+      /**
+       * Memilih agenda untuk disetujui dan menampilkan form tanda tangan Manager.
+       * @param {Object} item - Data agenda permohonan pelanggan.
+       */
+      function pilihAgendaManager(item) {
+        MGR_PERMOHONAN_ID = item.filePermohonanId || "";
+        MGR_PK_ID         = item.filePerintahKerjaId || "";
+        MGR_BA_ID         = item.fileBeritaAcaraId || "";
+        MGR_SPJBTL_ID     = item.fileSpjbtlId || "";
+        MGR_NO_AGENDA     = item.noAgenda;
+
+        document.getElementById('infoManagerText').innerHTML = `
+          <b>No Agenda:</b> ${item.noAgenda}<br>
+          <b>ID Pelanggan:</b> ${item.idPelanggan}<br>
+          <b>Nama:</b> ${item.nama}<br>
+          <b>Alamat:</b> ${item.alamat}<br>
+        `;
+
+        document.getElementById('managerTableContainer').classList.add('hidden');
+        document.getElementById('formManagerContent').classList.remove('hidden');
+
+        if (padManager) {
+          padManager.clear();
+          setTimeout(() => padManager.resizeCanvas(), 100);
+        }
+      }
+
+      /**
+       * Menutup form tanda tangan Manager dan kembali ke daftar agenda.
+       */
+      function tutupFormManager() {
+        resetFormManager(); // 🟢 Bersihkan TTD & Data transaksi Manager
+        document.getElementById('formManagerContent').classList.add('hidden');
+        document.getElementById('managerTableContainer').classList.remove('hidden');
+        muatListAgendaManager();
+      }
+
+      /**
+       * Memproses penyematan tanda tangan Manager ke satu berkas PDF.
+       */
+      async function signManagerPdf(fileId, ttdBase64, coordX, coordY, isLastPage, customWidth = 100, customHeight = 45) {
+        if (!fileId || String(fileId).trim() === "") return null;
+
+        const fileServer = await new Promise((res, rej) => {
+          google.script.run.withSuccessHandler(res).withFailureHandler(rej).getPdfAsli(fileId);
+        });
+
+        const doc = await PDFLib.PDFDocument.load(base64ToUint8Array(fileServer));
+        const targetPageIdx = isLastPage ? doc.getPageCount() - 1 : 0;
+        const page = doc.getPages()[targetPageIdx];
+
+        const pngMgr = await doc.embedPng(base64ToUint8Array(ttdBase64));
+        page.drawImage(pngMgr, { x: coordX, y: coordY, width: customWidth, height: customHeight });
+
+        return uint8ArrayToBase64(await doc.save());
+      }
+
+      /**
+       * Memproses penandatanganan 4 dokumen PDF secara bersamaan (paralel) oleh Manager.
+       */
+      async function prosesManagerTTD() {
+        if (!padManager || padManager.isEmpty()) {
+          tampilkanPopupNotif("Peringatan", "Tanda tangan Manager wajib diisi!", false);
+          return;
+        }
+
+        const btnSubmit = document.getElementById('btnSubmitManager');
+        const loadingModal = document.getElementById('loadingModal');
+        const loadingText = document.getElementById('loadingText');
+
+        btnSubmit.disabled = true;
+        loadingText.innerText = "Menyimpan data...";
+        loadingModal.classList.add('active');
+
+        const ttdMgrBase64 = padManager.toDataURL("image/png");
+
+        try {
+          const fileIdsObj = {
+            permohonan: MGR_PERMOHONAN_ID,
+            perintahKerja: MGR_PK_ID,
+            beritaAcara: MGR_BA_ID,
+            spjbtl: MGR_SPJBTL_ID
+          };
+
+          // Eksekusi penandatanganan 4 dokumen PDF secara paralel
+          const [base64Permohonan, base64Pk, base64Ba, base64Spjbtl] = await Promise.all([
+            signManagerPdf(MGR_PERMOHONAN_ID, ttdMgrBase64, 410, 305, false),
+            signManagerPdf(MGR_PK_ID, ttdMgrBase64, 420, 85, false),
+            signManagerPdf(MGR_BA_ID, ttdMgrBase64, 400, 135, false),
+            signManagerPdf(MGR_SPJBTL_ID, ttdMgrBase64, 460, 335, true, 120, 55)
+          ]);
+
+          const base64ListObj = {
+            permohonan: base64Permohonan,
+            perintahKerja: base64Pk,
+            beritaAcara: base64Ba,
+            spjbtl: base64Spjbtl
+          };
+
+          // Pengiriman hasil PDF yang sudah ditandatangani kembali ke server
+          google.script.run
+            .withSuccessHandler((resMsg) => {
+              loadingModal.classList.remove('active');
+              tampilkanPopupNotif("Berhasil disimpan", "Dokumen berhasil ditandatangani dan disimpan.", true);
+              btnSubmit.disabled = false;
+              setTimeout(() => { tutupFormManager(); }, 1200);
+            })
+            .withFailureHandler((error) => {
+              loadingModal.classList.remove('active');
+              tampilkanPopupNotif("Gagal", "Error: " + error.message, false);
+              btnSubmit.disabled = false;
+            })
+            .timpaPdfManagerEmpat(fileIdsObj, base64ListObj, MGR_NO_AGENDA);
+
+        } catch (errMgr) {
+          loadingModal.classList.remove('active');
+          tampilkanPopupNotif("Gagal", "Gagal: " + errMgr.message, false);
+          btnSubmit.disabled = false;
+        }
+      }
+
+      // ==========================================================================
+      // MODUL ADMIN: KOLEKTIF EXCEL & INTEGRASI ULP / UP3
+      // ==========================================================================
+
+      let DATA_REVIEW_KOLEKTIF_GLOBAL = [];
+
+      /**
+       * Mengosongkan form dan me-reset tampilan review kolektif.
+       */
+      function batalReviewKolektif() {
+        const fileIds = [
+          'fileExcelKolektif', 
+          'fileKolektifPermohonan', 
+          'fileKolektifPk', 
+          'fileKolektifBa', 
+          'fileKolektifSpjbtl'
+        ];
+
+        fileIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+
+        document.getElementById('wrapperReviewKolektif').classList.add('hidden');
+        document.getElementById('wrapperInputKolektif').classList.remove('hidden');
+        DATA_REVIEW_KOLEKTIF_GLOBAL = [];
+      }
+
+      /**
+       * Ekstraksi teks per halaman dari buffer dokumen PDF menggunakan PDF.js dan PDF-Lib.
+       */
+      async function extractPdfPagesText(arrayBuffer) {
+        if (!window.pdfjsLib) {
+          return { pdfDoc: null, pdfLibDoc: null, pagesText: [] };
+        }
+
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
+        const pdfDoc = await loadingTask.promise;
+        const pdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer.slice(0));
+        const pagesText = [];
+
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+          const page = await pdfDoc.getPage(i);
+          const textContent = await page.getTextContent();
+          const textStr = textContent.items.map(item => item.str).join(" ");
+          pagesText.push({ pageIndex: i - 1, text: textStr.toLowerCase() });
+        }
+
+        return { pdfDoc, pdfLibDoc, pagesText };
+      }
+
+      /**
+       * Mengekstrak 1 halaman spesifik dari PDF menjadi format string Base64.
+       */
+      async function extractSinglePageAsBase64(pdfLibDoc, pageIndex) {
+        const newPdf = await PDFLib.PDFDocument.create();
+        const [copiedPage] = await newPdf.copyPages(pdfLibDoc, [pageIndex]);
+        newPdf.addPage(copiedPage);
+        const pdfBytes = await newPdf.save();
+        return uint8ArrayToBase64(pdfBytes);
+      }
+
+      /**
+       * Mengekstrak beberapa halaman berurutan dari PDF menjadi format string Base64.
+       */
+      async function extractMultiplePagesAsBase64(pdfLibDoc, startIdx, count) {
+        const newPdf = await PDFLib.PDFDocument.create();
+        const totalPages = pdfLibDoc.getPageCount();
+        const indices = [];
+
+        for (let i = 0; i < count; i++) {
+          const idx = startIdx + i;
+          if (idx < totalPages) indices.push(idx);
+        }
+
+        if (indices.length === 0) indices.push(0);
+
+        const copiedPages = await newPdf.copyPages(pdfLibDoc, indices);
+        copiedPages.forEach(page => newPdf.addPage(page));
+
+        const pdfBytes = await newPdf.save();
+        return uint8ArrayToBase64(pdfBytes);
+      }
+
+      /**
+       * Membaca file Excel dan mengonversinya menjadi objek JSON data pelanggan.
+       */
+      function parseExcelFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = (e) => {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array', raw: true });
+              const firstSheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[firstSheetName];
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" });
+
+              let startIdx = 0;
+              if (jsonData.length > 0) {
+                const rowString = JSON.stringify(jsonData[0]).toLowerCase();
+                if (rowString.includes("agenda") || rowString.includes("nama") || rowString.includes("pelanggan")) {
+                  startIdx = 1;
+                }
+              }
+
+              const result = [];
+              for (let i = startIdx; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (row && row.length >= 4 && row[0] !== undefined && row[0] !== null && String(row[0]).trim() !== "") {
+                  
+                  const cleanString = (val) => {
+                    if (val === undefined || val === null) return "";
+                    let str = String(val).trim();
+                    if (str.includes("e+") || str.includes("E+")) {
+                      str = Number(val).toLocaleString('fullwide', { useGrouping: false });
+                    }
+                    return str;
+                  };
+
+                  result.push({
+                    noAgenda: cleanString(row[0]),
+                    idPelanggan: cleanString(row[1]),
+                    nama: cleanString(row[2]),
+                    alamat: cleanString(row[3]),
+                    jenisTransaksi: cleanString(row[4])
+                  });
+                }
+              }
+              resolve(result);
+            } catch (err) {
+              reject(err);
+            }
+          };
+
+          reader.onerror = (error) => reject(error);
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      /**
+       * Fungsi Pencarian Halaman Berdasarkan Kata Kunci (Agenda / ID Pelanggan)
+       */
+      function findPageIndexByKeyword(parsedObj, query) {
+        if (!parsedObj || !parsedObj.pagesText || !query) return 0;
+        const found = parsedObj.pagesText.find(p => p.text.includes(query));
+        return found ? found.pageIndex : 0;
+      }
+
+      /**
+       * Validasi pencocokan Nama Pelanggan antara file Excel dan isi halaman PDF.
+       */
+      function verifikasiNamaPdf(pageText, excelNama) {
+        if (!pageText || !excelNama) return false;
+        const cleanExcelNama = excelNama.toLowerCase().trim();
+        const nameParts = cleanExcelNama.split(" ");
+        const matchCount = nameParts.filter(part => part.length > 2 && pageText.includes(part)).length;
+        
+        return pageText.includes(cleanExcelNama) || matchCount >= Math.min(2, nameParts.length);
+      }
+
+      /**
+       * Memproses dan menganalisis kecocokan data file Excel dengan berkas-berkas PDF kolektif.
+       * Dilengkapi dengan validasi panjang digit No Agenda dan rincian status error spesifik.
+       */
+      async function prosesAnalisisKolektif() {
+        const fileExcel   = document.getElementById('fileExcelKolektif').files[0];
+        const fPermohonan = document.getElementById('fileKolektifPermohonan').files[0];
+        const fPk         = document.getElementById('fileKolektifPk').files[0];
+        const fBa         = document.getElementById('fileKolektifBa').files[0];
+        const fSpjbtl     = document.getElementById('fileKolektifSpjbtl').files[0];
+
+        if (!fileExcel || !fPermohonan || !fPk || !fBa || !fSpjbtl) {
+          tampilkanPopupNotif("Peringatan", "File Excel dan seluruh file PDF kolektif wajib di-upload!", false);
+          return;
+        }
+
+        const loadingModal = document.getElementById('loadingModal');
+        const loadingText  = document.getElementById('loadingText');
+
+        loadingText.innerText = "Preview upload kolektif...";
+        loadingModal.classList.add('active');
+
+        try {
+          // 1. Ambil daftar No Agenda yang sudah ada di database Google Sheet
+          const existingAgendasList = await new Promise((resolve) => {
+            google.script.run
+              .withSuccessHandler(resolve)
+              .withFailureHandler(() => resolve([]))
+              .getExistingAgendaList();
+          });
+
+          const existingAgendaSet = new Set(existingAgendasList.map(a => String(a).toLowerCase().trim()));
+          const seenAgendasInExcel = new Set();
+
+          // 2. Parsel File Excel
+          const excelRows = await parseExcelFile(fileExcel);
+          if (excelRows.length === 0) {
+            throw new Error("File Excel kosong atau format kolom tidak sesuai.");
+          }
+
+          const [bufPermohonan, bufPk, bufBa, bufSpjbtl] = await Promise.all([
+            fPermohonan.arrayBuffer(),
+            fPk.arrayBuffer(),
+            fBa.arrayBuffer(),
+            fSpjbtl.arrayBuffer()
+          ]);
+
+          const [parsedPermohonan, parsedPk, parsedBa, parsedSpjbtl] = await Promise.all([
+            extractPdfPagesText(bufPermohonan),
+            extractPdfPagesText(bufPk),
+            extractPdfPagesText(bufBa),
+            extractPdfPagesText(bufSpjbtl)
+          ]);
+
+          DATA_REVIEW_KOLEKTIF_GLOBAL = [];
+          let jumlahTidakValid = 0;
+
+          const reviewRows = await Promise.all(excelRows.map(async (row) => {
+            const qAgenda   = row.noAgenda ? String(row.noAgenda).toLowerCase().trim() : "";
+            const qIdPel    = row.idPelanggan ? String(row.idPelanggan).toLowerCase().trim() : "";
+            const excelNama = row.nama ? String(row.nama).trim() : "";
+
+            // -------------------------------------------------------------
+            // PENGECEKAN 1: Validasi Panjang No Agenda (Mesti 18 Digit)
+            // -------------------------------------------------------------
+            const isAgendaValidLength = qAgenda.length === 18;
+
+            // Cek Duplikat di Database & Duplikat internal File Excel
+            let isDuplicateDb    = existingAgendaSet.has(qAgenda);
+            let isDuplicateExcel = seenAgendasInExcel.has(qAgenda);
+            seenAgendasInExcel.add(qAgenda);
+
+            const pIndexPermohonan = findPageIndexByKeyword(parsedPermohonan, qAgenda);
+            const pIndexPk         = findPageIndexByKeyword(parsedPk, qIdPel);
+            const pIndexBa         = findPageIndexByKeyword(parsedBa, qAgenda);
+            const pIndexSpjbtl     = findPageIndexByKeyword(parsedSpjbtl, qAgenda);
+
+            const [base64Permohonan, base64Pk, base64Ba, base64Spjbtl] = await Promise.all([
+              extractSinglePageAsBase64(parsedPermohonan.pdfLibDoc, pIndexPermohonan),
+              extractSinglePageAsBase64(parsedPk.pdfLibDoc, pIndexPk),
+              extractSinglePageAsBase64(parsedBa.pdfLibDoc, pIndexBa),
+              extractMultiplePagesAsBase64(parsedSpjbtl.pdfLibDoc, pIndexSpjbtl, 4)
+            ]);
+
+            const isValidNamePermohonan = verifikasiNamaPdf(parsedPermohonan.pagesText[pIndexPermohonan]?.text, excelNama);
+            const isValidNamePk         = verifikasiNamaPdf(parsedPk.pagesText[pIndexPk]?.text, excelNama);
+            const isValidNameBa         = verifikasiNamaPdf(parsedBa.pagesText[pIndexBa]?.text, excelNama);
+
+            // -------------------------------------------------------------
+            // Evaluasi Kelayakan Data & Rincian Pesan Error Spesifik
+            // -------------------------------------------------------------
+            let isValidData = true;
+            let alasanGagal = [];
+
+            // Poin Utama: Jika No Agenda kurang dari 18 digit
+            if (!isAgendaValidLength) {
+              isValidData = false;
+              alasanGagal.push("No Agenda kurang 18 digit");
+            }
+
+            if (isDuplicateDb) {
+              isValidData = false;
+              alasanGagal.push("No Agenda Sudah Ada di Database");
+            }
+            
+            if (isDuplicateExcel) {
+              isValidData = false;
+              alasanGagal.push("No Agenda Ganda di Excel Ini");
+            }
+
+            // Hanya validasi nama jika No Agenda memenuhi syarat 18 digit
+            if (isAgendaValidLength) {
+              let namaGagalDokumen = [];
+              if (!isValidNamePermohonan) namaGagalDokumen.push("Permohonan");
+              if (!isValidNamePk) namaGagalDokumen.push("PK");
+              if (!isValidNameBa) namaGagalDokumen.push("BA");
+
+              if (namaGagalDokumen.length > 0) {
+                isValidData = false;
+                alasanGagal.push(`Nama Pelanggan Tidak Cocok di PDF (${namaGagalDokumen.join(', ')})`);
+              }
+            }
+
+            if (!isValidData) {
+              jumlahTidakValid++;
+            }
+
+            const statusBadge = isValidData
+              ? `<span style="color: green; font-weight: bold;">Valid</span>`
+              : `<span style="color: #dc2626; font-weight: bold;" title="${alasanGagal.join(', ')}">Tidak Valid (${alasanGagal.join(', ')})</span>`;
+
+            DATA_REVIEW_KOLEKTIF_GLOBAL.push({
+              isValid: isValidData,
+              alasan: alasanGagal.join('; '),
+              noAgenda: row.noAgenda,
+              idPelanggan: row.idPelanggan,
+              nama: row.nama,
+              alamat: row.alamat,
+              jenisTransaksi: row.jenisTransaksi,
+              ulp: (typeof CURRENT_USER_ULP !== 'undefined' && CURRENT_USER_ULP) ? CURRENT_USER_ULP : "",
+              up3: (typeof CURRENT_USER_UP3 !== 'undefined' && CURRENT_USER_UP3) ? CURRENT_USER_UP3 : "",
+              filePermohonan: { name: `Permohonan_${row.noAgenda}.pdf`, data: `data:application/pdf;base64,${base64Permohonan}` },
+              filePerintahKerja: { name: `PK_${row.noAgenda}.pdf`, data: `data:application/pdf;base64,${base64Pk}` },
+              fileBeritaAcara: { name: `BA_${row.noAgenda}.pdf`, data: `data:application/pdf;base64,${base64Ba}` },
+              fileSpjbtl: { name: `SPJBTL_${row.noAgenda}.pdf`, data: `data:application/pdf;base64,${base64Spjbtl}` }
+            });
+
+            return `<tr style="${!isValidData ? 'background-color: #fef2f2;' : ''}">
+              <td><b>${row.noAgenda}</b></td>
+              <td>${row.idPelanggan}</td>
+              <td>${row.nama}</td>
+              <td>${row.alamat}</td>
+              <td>Hal ${pIndexPermohonan + 1}</td>
+              <td>Hal ${pIndexPk + 1}</td>
+              <td>Hal ${pIndexBa + 1}</td>
+              <td>Hal ${pIndexSpjbtl + 1}</td>
+              <td>${statusBadge}</td>
+            </tr>`;
+          }));
+
+          loadingModal.classList.remove('active');
+          
+          // Update Ringkasan Data Tidak Valid & Tombol Eksport
+          const elJumlahInvalid = document.getElementById('cntDataTidakValid');
+          const btnExportInvalid = document.getElementById('btnExportDataInvalid');
+          
+          if (elJumlahInvalid) {
+            elJumlahInvalid.innerText = `Data Tidak Valid: ${jumlahTidakValid}`;
+          }
+
+          if (btnExportInvalid) {
+            btnExportInvalid.style.display = jumlahTidakValid > 0 ? "inline-block" : "none";
+          }
+
+          document.getElementById('tabelReviewKolektif').querySelector('tbody').innerHTML = reviewRows.join('');
+          document.getElementById('wrapperInputKolektif').classList.add('hidden');
+          document.getElementById('wrapperReviewKolektif').classList.remove('hidden');
+
+        } catch (err) {
+          loadingModal.classList.remove('active');
+          let pesanBersih = err.message
+            .replace(/Error:\s*/gi, '')
+            .replace(/Gagal:\s*/gi, '')
+            .trim();
+
+          tampilkanPopupNotif("Peringatan", pesanBersih, false);
+        }
+      }
+
+      /**
+       * Meng-eksport baris data yang berstatus Tidak Valid ke file Excel (.xlsx).
+       */
+      function exportDataTidakValidKolektif() {
+        const invalidItems = DATA_REVIEW_KOLEKTIF_GLOBAL.filter(item => !item.isValid);
+
+        if (!invalidItems || invalidItems.length === 0) {
+          tampilkanPopupNotif("Peringatan", "Tidak ada data tidak valid untuk di-export!", false);
+          return;
+        }
+
+        try {
+          const exportData = invalidItems.map(item => ({
+            "No Agenda": item.noAgenda,
+            "ID Pelanggan": item.idPelanggan,
+            "Nama": item.nama,
+            "Alamat": item.alamat,
+            "Keterangan Error": item.alasan
+          }));
+
+          const worksheet = XLSX.utils.json_to_sheet(exportData);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tidak Valid");
+
+          const now = new Date();
+          const timestamp = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0') + '_' +
+            String(now.getHours()).padStart(2, '0') +
+            String(now.getMinutes()).padStart(2, '0') +
+            String(now.getSeconds()).padStart(2, '0');
+
+          const fileName = `Data_Tidak_Valid_Kolektif_${timestamp}.xlsx`;
+          
+          XLSX.writeFile(workbook, fileName);
+
+        } catch (err) {
+          tampilkanPopupNotif("Peringatan", "Gagal meng-export Excel: " + err.message, false);
+        }
+      }
+
+      /**
+       * Menyimpan berkas dan data kolektif ke server (HANYA DATA BERSTATUS VALID).
+       */
+      async function approveSimpanKolektif() {
+        const validItems = DATA_REVIEW_KOLEKTIF_GLOBAL.filter(item => item.isValid);
+
+        if (validItems.length === 0) {
+          tampilkanPopupNotif("Peringatan", "Tidak ada data valid yang dapat disimpan! Silakan cek kembali file Excel Anda.", false);
+          return;
+        }
+
+        const btnApprove   = document.getElementById('btnApproveKolektif');
+        const loadingModal = document.getElementById('loadingModal');
+        const loadingText  = document.getElementById('loadingText');
+
+        btnApprove.disabled = true;
+        loadingModal.classList.add('active');
+
+        try {
+          let totalValid = validItems.length;
+          for (let i = 0; i < totalValid; i++) {
+            const item = validItems[i];
+            loadingText.innerText = `Menyimpan data (${i + 1} dari ${totalValid})...`;
+
+            const payloadFolder = {
+              noAgenda: item.noAgenda,
+              idPelanggan: item.idPelanggan,
+              nama: item.nama,
+              alamat: item.alamat,
+              jenisTransaksi: item.jenisTransaksi || "",
+              ulp: item.ulp || "",
+              up3: item.up3 || "",
+              filePermohonan: item.filePermohonan,
+              filePerintahKerja: item.filePerintahKerja,
+              fileBeritaAcara: item.fileBeritaAcara,
+              fileSpjbtl: item.fileSpjbtl
+            };
+
+            await new Promise((resolve, reject) => {
+              google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .simpanDataAdmin(payloadFolder);
+            });
+          }
+
+          loadingModal.classList.remove('active');
+          btnApprove.disabled = false;
+          
+          let totalSkip = DATA_REVIEW_KOLEKTIF_GLOBAL.length - totalValid;
+          let msgHasil = `${totalValid} data valid berhasil disimpan!`;
+          if (totalSkip > 0) {
+            msgHasil += ` (${totalSkip} data tidak valid dilewati).`;
+          }
+
+          tampilkanPopupNotif("Berhasil disimpan", msgHasil, true);
+          batalReviewKolektif();
+
+        } catch (errSave) {
+          loadingModal.classList.remove('active');
+          btnApprove.disabled = false;
+
+          let pesanBersih = errSave.message
+            .replace(/Error saat menyimpan:\s*/gi, '')
+            .replace(/Error:\s*/gi, '')
+            .replace(/Gagal menyimpan data:\s*/gi, '')
+            .trim();
+
+          tampilkanPopupNotif("Peringatan", pesanBersih, false);
+        }
+      }
+
+      // ==========================================================================
+      // MODAL & UTILITAS AUTHENTICATION
+      // ==========================================================================
+
+      function bukaModalLogout() {
+        document.getElementById('logoutModal').classList.add('active');
+      }
+
+      function tutupModalLogout() {
+        document.getElementById('logoutModal').classList.remove('active');
+      }
+
+      function konfirmasiLogout() {
+        tutupModalLogout();
+        logout();
+      }
+
+      // Cek Status Autentikasi Saat Halaman Selesai Dimuat
+      document.addEventListener("DOMContentLoaded", () => {
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const userRole   = localStorage.getItem('userRole');
+        const userNama   = localStorage.getItem('userNama') || "Pengguna";
+        const userUlp    = localStorage.getItem('userUlp') || "";
+        const userUp3    = localStorage.getItem('userUp3') || "";
+
+        if (isLoggedIn === 'true' && userRole) {
+          inisialisasiNavigasi(userRole, userNama, userUlp, userUp3);
+        } else {
+          logout();
+        }
+      });
+
+      // ===================================================
+      // FUNGSI RESET / CLEAR INPUT UNTUK SETIAP MENU
+      // ===================================================
+
+      // 1. Reset Menu Entri Individu
+      function resetFormIndividu() {
+        // Reset elemen-elemen input teks
+        const inputs = document.querySelectorAll('#panelAdminIndividu input, #panelAdminIndividu textarea, #panelAdminIndividu select');
+        inputs.forEach(input => {
+          if (input.type === 'file') {
+            input.value = ''; // Kosongkan file upload
+          } else {
+            input.value = '';
+          }
+        });
+      }
+
+      // 2. Reset Menu Upload Kolektif
+      function resetFormKolektif() {
+        const inputs = document.querySelectorAll('#panelAdminKolektif input');
+        inputs.forEach(input => input.value = '');
+
+        // Bersihkan data global Excel/PDF kolektif jika ada
+        if (typeof dataExcelKolektif !== 'undefined') dataExcelKolektif = [];
+        if (typeof filesPdfKolektif !== 'undefined') filesPdfKolektif = [];
+
+        // Bersihkan preview tabel kolektif jika ada
+        const tablePreview = document.getElementById('tabelPreviewKolektif'); // Sesuaikan ID tabel Anda
+        if (tablePreview) tablePreview.innerHTML = '';
+      }
+
+      // 3. Reset Menu Arsip Dokumen
+      function resetFormArsip() {
+        const inputs = document.querySelectorAll('#panelAdminArsip input');
+        inputs.forEach(input => input.value = '');
+
+        const containerHasil = document.getElementById('containerHasilArsip'); // Sesuaikan ID container hasil Anda
+        if (containerHasil) containerHasil.innerHTML = '';
+      }
+
+      // 4. Reset Menu Petugas Lapangan
+      function resetFormPetugas() {
+        // Kosongkan semua elemen input, select, dan textarea
+        const inputs = document.querySelectorAll('#panelPetugasEksekusi input, #panelPetugasEksekusi select, #panelPetugasEksekusi textarea');
+        inputs.forEach(input => input.value = '');
+
+        // Bersihkan Instance SignaturePad
+        if (typeof padPelanggan !== 'undefined' && padPelanggan) {
+          padPelanggan.clear();
+        }
+        if (typeof padPetugas !== 'undefined' && padPetugas) {
+          padPetugas.clear();
+        }
+      }
+
+      // 5. Reset Menu Manager
+      function resetFormManager() {
+        // Bersihkan Instance SignaturePad Manager
+        if (typeof padManager !== 'undefined' && padManager) {
+          padManager.clear();
+        }
+
+        // Reset variabel penampung data Manager
+        MGR_PERMOHONAN_ID = "";
+        MGR_PK_ID         = "";
+        MGR_BA_ID         = "";
+        MGR_SPJBTL_ID     = "";
+        MGR_NO_AGENDA     = "";
+
+        // Uncheck checkbox antrean jika ada
+        const checkboxes = document.querySelectorAll('#panelManagerApproval input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+
+        // Bersihkan teks info jika ada
+        const infoMgr = document.getElementById('infoManagerText');
+        if (infoMgr) infoMgr.innerHTML = "";
+      }
+
+      // RESET SEMUA FORM SEKALIGUS (Digunakan saat Pindah Menu & Logout)
+      function resetAllForms() {
+        resetFormIndividu();
+        resetFormKolektif();
+        resetFormArsip();
+        resetFormPetugas();
+        resetFormManager();
+      }
+
+      // ===================================================
+      // FUNGSI DASHBOARD
+      // ===================================================
+
+      var myChartDashboard = null;
+
+      function muatDataDashboard() {
+        const loadingModal = document.getElementById('loadingModal');
+        const loadingText  = document.getElementById('loadingText');
+
+        loadingText.innerText = "Memuat data dashboard...";
+        loadingModal.classList.add('active');
+
+        google.script.run
+          .withSuccessHandler((res) => {
+            loadingModal.classList.remove('active');
+            if (res.success) {
+              document.getElementById('dashUlpTitle').innerText = res.ulpName;
+              document.getElementById('dashTotalData').innerText = res.totalData;
+              document.getElementById('dashTotalMenunggu').innerText = res.totalMenunggu; // Tambahan baris ini
+              document.getElementById('dashTotalPetugas').innerText = res.totalPetugasSelesai;
+              document.getElementById('dashTotalManager').innerText = res.totalManagerApproved;
+
+              renderChartDashboard(res.totalData, res.totalPetugasSelesai, res.totalManagerApproved, res.totalMenunggu);
+            }
+          })
+          .withFailureHandler((err) => {
+            loadingModal.classList.remove('active');
+            tampilkanPopupNotif("Gagal", "Gagal memuat dashboard: " + err.message, false);
+          })
+          .getDashboardStats(CURRENT_USER_ULP);
+      }
+
+      function renderChartDashboard(total, petugas, manager, menunggu) {
+        const ctx = document.getElementById('chartDashboard').getContext('2d');
+
+        if (myChartDashboard) {
+          myChartDashboard.destroy(); // Hapus chart lama sebelum membuat yang baru
+        }
+
+        myChartDashboard = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Total Data', 'Menunggu Eksekusi', 'Selesai Petugas', 'Approved Manager'],
+            datasets: [{
+              label: 'Jumlah File/Agenda',
+              data: [total, menunggu, petugas, manager],
+              backgroundColor: [
+                '#0284c7',
+                '#94a3b8',
+                '#eab308',
+                '#22c55e'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 }
+              }
+            }
+          }
+        });
+      }
+
+    </script>
+
+  </body>
+</html>
